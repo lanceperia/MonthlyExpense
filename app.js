@@ -212,11 +212,11 @@ function renderBankSummary(monthPurchases) {
         const paidLabel = paid ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-500">No</span>';
 
         return `<tr class="border-b border-gray-700/30">
-            <td class="px-4 py-3 text-sm font-medium">${bank.name}</td>
-            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(total)}</td>
-            <td class="px-4 py-3 text-sm">${soaAmount}</td>
-            <td class="px-4 py-3 text-sm text-center">${paidLabel}</td>
-            <td class="px-4 py-3 text-center flex items-center justify-end">
+            <td class="px-2 sm:px-4 py-3 text-sm font-medium">${bank.name}</td>
+            <td class="px-2 sm:px-4 py-3 text-sm font-semibold text-right">₱${formatNumber(total)}</td>
+            <td class="px-2 sm:px-4 py-3 text-sm text-right">${soaAmount}</td>
+            <td class="px-2 sm:px-4 py-3 text-sm text-center">${paidLabel}</td>
+            <td class="px-2 sm:px-4 py-3 w-10">
                 <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
             </td>
         </tr>`;
@@ -402,13 +402,15 @@ function renderMonthly() {
 
         const hasMultiple = group.items.length > 1;
         html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
-            <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
-            <td class="px-4 py-3 text-sm">${categoryLabel}</td>
-            <td class="px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
-            <td class="px-4 py-3 text-center flex items-center justify-end gap-1">
+            <td class="px-2 sm:px-4 py-3 text-sm font-medium">${group.bank}</td>
+            <td class="px-2 sm:px-4 py-3 text-sm">${categoryLabel}</td>
+            <td class="px-2 sm:px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
+            <td class="px-2 sm:px-4 py-3 w-10">
                 ${!hasMultiple ? `
-                    <button onclick="event.stopPropagation(); editPurchase('${group.items[0].id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
-                    <button onclick="event.stopPropagation(); deletePurchase('${group.items[0].id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                    <div class="flex items-center justify-end gap-1">
+                        <button onclick="event.stopPropagation(); editPurchase('${group.items[0].id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                        <button onclick="event.stopPropagation(); deletePurchase('${group.items[0].id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                    </div>
                 ` : `<svg class="w-4 h-4 text-gray-500 transition-transform expand-icon-${idx}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`}
             </td>
         </tr>`;
