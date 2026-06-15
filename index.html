@@ -212,7 +212,7 @@
                 <div id="banks-list" class="space-y-2 mb-3"></div>
                 <div class="flex gap-2">
                     <input type="text" id="new-bank-name" class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Bank name">
-                    <input type="number" id="new-bank-soa" min="1" max="28" class="w-20 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="SOA">
+                    <input type="number" id="new-bank-soa" min="0" max="28" class="w-20 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="SOA">
                     <button onclick="addBank()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors">Add</button>
                 </div>
             </div>
@@ -318,6 +318,11 @@
         } else {
             categories = snap.docs.map(d => d.data().name);
         }
+        categories.sort((a, b) => {
+            if (a === 'Others') return 1;
+            if (b === 'Others') return -1;
+            return a.localeCompare(b);
+        });
     }
 
     async function loadBanks() {
@@ -512,7 +517,7 @@
         // Pie chart by category
         const catTotals = {};
         yearPurchases.forEach(p => {
-            const cat = p.category;
+            const cat = p.category === 'Others' ? (p.othersText || 'Others') : p.category;
             catTotals[cat] = (catTotals[cat] || 0) + parseFloat(p.amount);
         });
 
@@ -731,7 +736,11 @@
         if (!name || categories.includes(name)) return;
         await userDoc('categories').add({ name });
         categories.push(name);
-        categories.sort();
+        categories.sort((a, b) => {
+            if (a === 'Others') return 1;
+            if (b === 'Others') return -1;
+            return a.localeCompare(b);
+        });
         input.value = '';
         openSettings();
     }
@@ -747,10 +756,11 @@
         const nameInput = document.getElementById('new-bank-name');
         const soaInput = document.getElementById('new-bank-soa');
         const name = nameInput.value.trim();
-        const soa = parseInt(soaInput.value) || 1;
+        const soa = soaInput.value !== '' ? parseInt(soaInput.value) : 0;
         if (!name || banks.find(b => (typeof b === 'object' ? b.name : b) === name)) return;
         const ref = await userDoc('banks').add({ name, soaDate: soa });
         banks.push({ id: ref.id, name, soaDate: soa });
+        banks.sort((a, b) => a.name.localeCompare(b.name));
         nameInput.value = '';
         soaInput.value = '';
         openSettings();
