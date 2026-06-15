@@ -64,6 +64,7 @@
                 <div class="flex gap-1">
                     <button id="tab-monthly" onclick="switchTab('monthly')" class="px-4 py-2 text-sm font-medium border-b-2 border-accent text-accent">Monthly</button>
                     <button id="tab-summary" onclick="switchTab('summary')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Summary</button>
+                    <button id="tab-recurring" onclick="switchTab('recurring')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Recurring</button>
                 </div>
             </div>
         </header>
@@ -138,6 +139,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- Recurring View -->
+        <div id="view-recurring" class="max-w-6xl mx-auto px-4 py-6 hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold">Recurring Expenses</h2>
+                <button onclick="openAddRecurring()" class="bg-accent hover:bg-accent-dark text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">+ Add Recurring</button>
+            </div>
+            <div class="bg-dark-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('bank')">Bank <span id="sort-icon-r-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('category')">Category <span id="sort-icon-r-category" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('amount')">Amount <span id="sort-icon-r-amount" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('day')">Day <span id="sort-icon-r-day" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('endDate')">Until <span id="sort-icon-r-endDate" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('active')">Active <span id="sort-icon-r-active" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-20"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="recurring-table-body"></tbody>
+                </table>
+                <div id="recurring-empty" class="hidden text-center py-12 text-gray-500">No recurring expenses configured</div>
+            </div>
+        </div>
     </div>
 
     <!-- Add/Edit Purchase Modal -->
@@ -180,6 +206,15 @@
     <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 class="text-lg font-bold mb-4">Settings</h2>
+
+            <!-- Features Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Features</h3>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="settings-recurring-enabled" class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
+                    <label for="settings-recurring-enabled" class="text-sm text-gray-400">Enable Recurring Expenses</label>
+                </div>
+            </div>
 
             <!-- Budget Section -->
             <div class="mb-6">
@@ -237,6 +272,60 @@
         </div>
     </div>
 
+    <!-- Add/Edit Recurring Modal -->
+    <div id="modal-recurring" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h2 id="modal-recurring-title" class="text-lg font-bold mb-4">Add Recurring Expense</h2>
+            <form id="recurring-form" onsubmit="saveRecurringTemplate(event)">
+                <input type="hidden" id="recurring-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bank</label>
+                        <select id="recurring-bank" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Category</label>
+                        <select id="recurring-category" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Amount (₱)</label>
+                        <input type="number" id="recurring-amount" required step="0.01" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Day of Month</label>
+                        <input type="number" id="recurring-day" required min="1" max="31" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="1-31">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">End Date (optional)</label>
+                        <input type="month" id="recurring-end-date" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm cursor-pointer" onclick="this.showPicker()">
+                        <p class="text-xs text-gray-500 mt-1">Leave blank if no end date. Last month it will generate.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="recurring-active" checked class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
+                        <label for="recurring-active" class="text-sm text-gray-400">Active</label>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-recurring')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Recurring Confirmation Modal -->
+    <div id="modal-delete-recurring" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h2 class="text-lg font-bold mb-2">Delete Recurring Expense</h2>
+            <p class="text-gray-400 text-sm mb-6">Are you sure you want to delete this recurring expense? This cannot be undone.</p>
+            <input type="hidden" id="delete-recurring-id">
+            <div class="flex gap-3">
+                <button onclick="closeModal('modal-delete-recurring')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                <button onclick="confirmDeleteRecurring()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors text-sm">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script>
     // Firebase Config - Replace with your own
     const firebaseConfig = {
@@ -260,6 +349,8 @@
     let categories = [];
     let banks = [];
     let settings = { defaultBudget: 0, monthOverrides: {} };
+    let recurringTemplates = [];
+    let recurringLog = [];
     let pieChart = null;
     let sortColumn = 'total';
     let sortDirection = 'desc';
@@ -304,7 +395,11 @@
     }
 
     async function loadData() {
-        await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases()]);
+        await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases(), loadRecurring(), loadRecurringLog()]);
+        updateRecurringTabVisibility();
+        if (settings.recurringEnabled) {
+            await generateRecurringPurchases();
+        }
         renderMonthly();
     }
 
@@ -347,6 +442,74 @@
     async function loadPurchases() {
         const snap = await userDoc('purchases').get();
         purchases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async function loadRecurring() {
+        const snap = await userDoc('recurring').get();
+        recurringTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async function loadRecurringLog() {
+        const snap = await userDoc('recurringLog').get();
+        recurringLog = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async function generateRecurringPurchases() {
+        const today = new Date();
+        for (const template of recurringTemplates) {
+            if (!template.active) continue;
+
+            const billingMonth = getBillingMonthForRecurring(template);
+            const billingKey = `${billingMonth.year}-${String(billingMonth.month).padStart(2, '0')}`;
+
+            if (template.endDate && billingKey > template.endDate) continue;
+
+            const alreadyGenerated = recurringLog.some(
+                log => log.recurringId === template.id && log.billingMonth === billingKey
+            );
+            if (alreadyGenerated) continue;
+
+            const purchaseDate = buildPurchaseDate(template.dayOfMonth, today);
+            const purchaseData = {
+                bank: template.bank,
+                category: template.category,
+                date: purchaseDate,
+                amount: template.amount,
+                othersText: ''
+            };
+
+            const ref = await userDoc('purchases').add(purchaseData);
+            purchases.push({ id: ref.id, ...purchaseData });
+
+            const logData = { recurringId: template.id, billingMonth: billingKey };
+            const logRef = await userDoc('recurringLog').add(logData);
+            recurringLog.push({ id: logRef.id, ...logData });
+        }
+    }
+
+    function getBillingMonthForRecurring(template) {
+        const today = new Date();
+        const day = template.dayOfMonth;
+        const month = today.getMonth();
+        const year = today.getFullYear();
+        const bank = banks.find(b => b.name === template.bank);
+        const soaDate = bank ? bank.soaDate : 0;
+
+        if (!soaDate) return { month, year };
+
+        if (day >= soaDate) {
+            if (month === 11) return { month: 0, year: year + 1 };
+            return { month: month + 1, year: year };
+        }
+        return { month, year };
+    }
+
+    function buildPurchaseDate(dayOfMonth, refDate) {
+        const year = refDate.getFullYear();
+        const month = refDate.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(dayOfMonth, lastDay);
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
     // SOA Logic: determine billing month for a purchase
@@ -572,10 +735,23 @@
         select.innerHTML = sorted.map(y => `<option value="${y}"${y === currentYear ? ' selected' : ''}>${y}</option>`).join('');
     }
 
+    function updateRecurringTabVisibility() {
+        const tabBtn = document.getElementById('tab-recurring');
+        if (settings.recurringEnabled) {
+            tabBtn.classList.remove('hidden');
+        } else {
+            tabBtn.classList.add('hidden');
+            if (!document.getElementById('view-recurring').classList.contains('hidden')) {
+                switchTab('monthly');
+            }
+        }
+    }
+
     // Tab switching
     function switchTab(tab) {
         document.getElementById('view-monthly').classList.toggle('hidden', tab !== 'monthly');
         document.getElementById('view-summary').classList.toggle('hidden', tab !== 'summary');
+        document.getElementById('view-recurring').classList.toggle('hidden', tab !== 'recurring');
         document.getElementById('tab-monthly').classList.toggle('border-accent', tab === 'monthly');
         document.getElementById('tab-monthly').classList.toggle('text-accent', tab === 'monthly');
         document.getElementById('tab-monthly').classList.toggle('border-transparent', tab !== 'monthly');
@@ -584,10 +760,17 @@
         document.getElementById('tab-summary').classList.toggle('text-accent', tab === 'summary');
         document.getElementById('tab-summary').classList.toggle('border-transparent', tab !== 'summary');
         document.getElementById('tab-summary').classList.toggle('text-gray-400', tab !== 'summary');
+        document.getElementById('tab-recurring').classList.toggle('border-accent', tab === 'recurring');
+        document.getElementById('tab-recurring').classList.toggle('text-accent', tab === 'recurring');
+        document.getElementById('tab-recurring').classList.toggle('border-transparent', tab !== 'recurring');
+        document.getElementById('tab-recurring').classList.toggle('text-gray-400', tab !== 'recurring');
 
         if (tab === 'summary') {
             populateYearDropdown();
             renderSummary();
+        }
+        if (tab === 'recurring') {
+            renderRecurring();
         }
     }
 
@@ -684,6 +867,7 @@
 
     // Settings
     function openSettings() {
+        document.getElementById('settings-recurring-enabled').checked = settings.recurringEnabled || false;
         document.getElementById('settings-default-budget').value = settings.defaultBudget || '';
         const monthKey = `${currentYear}-${currentMonth}`;
         document.getElementById('settings-override-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
@@ -714,10 +898,12 @@
 
     async function saveSettings() {
         const defaultBudget = parseFloat(document.getElementById('settings-default-budget').value) || 0;
+        const recurringEnabled = document.getElementById('settings-recurring-enabled').checked;
         const monthKey = `${currentYear}-${currentMonth}`;
         const overrideVal = document.getElementById('settings-month-override').value;
 
         settings.defaultBudget = defaultBudget;
+        settings.recurringEnabled = recurringEnabled;
         if (!settings.monthOverrides) settings.monthOverrides = {};
         if (overrideVal !== '') {
             settings.monthOverrides[monthKey] = parseFloat(overrideVal);
@@ -727,6 +913,7 @@
 
         await db.collection('users').doc(currentUser.uid).set({ settings }, { merge: true });
         closeModal('modal-settings');
+        updateRecurringTabVisibility();
         renderMonthly();
     }
 
@@ -771,6 +958,186 @@
         snap.forEach(doc => doc.ref.delete());
         banks = banks.filter(b => (typeof b === 'object' ? b.name : b) !== name);
         openSettings();
+    }
+
+    // Recurring Templates
+    function openAddRecurring() {
+        document.getElementById('modal-recurring-title').textContent = 'Add Recurring Expense';
+        document.getElementById('recurring-id').value = '';
+        document.getElementById('recurring-form').reset();
+        document.getElementById('recurring-active').checked = true;
+        populateRecurringDropdowns();
+        openModal('modal-recurring');
+    }
+
+    function editRecurring(id) {
+        const template = recurringTemplates.find(t => t.id === id);
+        if (!template) return;
+        document.getElementById('modal-recurring-title').textContent = 'Edit Recurring Expense';
+        document.getElementById('recurring-id').value = id;
+        populateRecurringDropdowns();
+        document.getElementById('recurring-bank').value = template.bank;
+        document.getElementById('recurring-category').value = template.category;
+        document.getElementById('recurring-amount').value = template.amount;
+        document.getElementById('recurring-day').value = template.dayOfMonth;
+        document.getElementById('recurring-end-date').value = template.endDate || '';
+        document.getElementById('recurring-active').checked = template.active;
+        openModal('modal-recurring');
+    }
+
+    function populateRecurringDropdowns() {
+        const bankSelect = document.getElementById('recurring-bank');
+        const catSelect = document.getElementById('recurring-category');
+        bankSelect.innerHTML = banks.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+        catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    async function saveRecurringTemplate(e) {
+        e.preventDefault();
+        const id = document.getElementById('recurring-id').value;
+        const endDateVal = document.getElementById('recurring-end-date').value;
+        const data = {
+            bank: document.getElementById('recurring-bank').value,
+            category: document.getElementById('recurring-category').value,
+            amount: parseFloat(document.getElementById('recurring-amount').value),
+            dayOfMonth: parseInt(document.getElementById('recurring-day').value),
+            active: document.getElementById('recurring-active').checked,
+            endDate: endDateVal || null
+        };
+
+        if (id) {
+            await userDoc('recurring').doc(id).update(data);
+            const idx = recurringTemplates.findIndex(t => t.id === id);
+            if (idx !== -1) recurringTemplates[idx] = { id, ...data };
+        } else {
+            const ref = await userDoc('recurring').add(data);
+            const newTemplate = { id: ref.id, ...data };
+            recurringTemplates.push(newTemplate);
+            if (data.active) {
+                await generateForTemplate(newTemplate);
+            }
+        }
+
+        closeModal('modal-recurring');
+        renderRecurring();
+    }
+
+    async function generateForTemplate(template) {
+        const billingMonth = getBillingMonthForRecurring(template);
+        const billingKey = `${billingMonth.year}-${String(billingMonth.month).padStart(2, '0')}`;
+
+        if (template.endDate && billingKey > template.endDate) return;
+
+        const alreadyGenerated = recurringLog.some(
+            log => log.recurringId === template.id && log.billingMonth === billingKey
+        );
+        if (alreadyGenerated) return;
+
+        const purchaseDate = buildPurchaseDate(template.dayOfMonth, new Date());
+        const purchaseData = {
+            bank: template.bank,
+            category: template.category,
+            date: purchaseDate,
+            amount: template.amount,
+            othersText: ''
+        };
+
+        const ref = await userDoc('purchases').add(purchaseData);
+        purchases.push({ id: ref.id, ...purchaseData });
+
+        const logData = { recurringId: template.id, billingMonth: billingKey };
+        const logRef = await userDoc('recurringLog').add(logData);
+        recurringLog.push({ id: logRef.id, ...logData });
+    }
+
+    function deleteRecurring(id) {
+        document.getElementById('delete-recurring-id').value = id;
+        openModal('modal-delete-recurring');
+    }
+
+    async function confirmDeleteRecurring() {
+        const id = document.getElementById('delete-recurring-id').value;
+        await userDoc('recurring').doc(id).delete();
+        recurringTemplates = recurringTemplates.filter(t => t.id !== id);
+        closeModal('modal-delete-recurring');
+        renderRecurring();
+    }
+
+    async function toggleRecurringActive(id) {
+        const template = recurringTemplates.find(t => t.id === id);
+        if (!template) return;
+        template.active = !template.active;
+        await userDoc('recurring').doc(id).update({ active: template.active });
+        renderRecurring();
+    }
+
+    let recurringSortColumn = 'bank';
+    let recurringSortDirection = 'asc';
+
+    function sortRecurringTable(column) {
+        if (recurringSortColumn === column) {
+            recurringSortDirection = recurringSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            recurringSortColumn = column;
+            recurringSortDirection = column === 'amount' ? 'desc' : 'asc';
+        }
+        updateRecurringSortIcons();
+        renderRecurring();
+    }
+
+    function updateRecurringSortIcons() {
+        ['bank', 'category', 'amount', 'day', 'endDate', 'active'].forEach(col => {
+            const el = document.getElementById(`sort-icon-r-${col}`);
+            if (col === recurringSortColumn) {
+                el.textContent = recurringSortDirection === 'asc' ? '▲' : '▼';
+            } else {
+                el.textContent = '';
+            }
+        });
+    }
+
+    function renderRecurring() {
+        const tbody = document.getElementById('recurring-table-body');
+        const emptyMsg = document.getElementById('recurring-empty');
+
+        if (recurringTemplates.length === 0) {
+            tbody.innerHTML = '';
+            emptyMsg.classList.remove('hidden');
+            return;
+        }
+
+        emptyMsg.classList.add('hidden');
+
+        const sorted = [...recurringTemplates].sort((a, b) => {
+            let cmp = 0;
+            if (recurringSortColumn === 'bank') cmp = a.bank.localeCompare(b.bank);
+            else if (recurringSortColumn === 'category') cmp = a.category.localeCompare(b.category);
+            else if (recurringSortColumn === 'amount') cmp = a.amount - b.amount;
+            else if (recurringSortColumn === 'day') cmp = a.dayOfMonth - b.dayOfMonth;
+            else if (recurringSortColumn === 'endDate') cmp = (a.endDate || '9999-99').localeCompare(b.endDate || '9999-99');
+            else if (recurringSortColumn === 'active') cmp = (a.active === b.active) ? 0 : a.active ? -1 : 1;
+            return recurringSortDirection === 'asc' ? cmp : -cmp;
+        });
+
+        const editIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>`;
+        const delIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+
+        tbody.innerHTML = sorted.map(t => `
+            <tr class="border-b border-gray-700/30">
+                <td class="px-4 py-3 text-sm font-medium">${t.bank}</td>
+                <td class="px-4 py-3 text-sm">${t.category}</td>
+                <td class="px-4 py-3 text-sm text-right font-semibold">₱${formatNumber(t.amount)}</td>
+                <td class="px-4 py-3 text-sm text-center">${t.dayOfMonth}</td>
+                <td class="px-4 py-3 text-sm text-center">${t.endDate || '—'}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="toggleRecurringActive('${t.id}')" class="text-sm ${t.active ? 'text-green-400' : 'text-gray-500'}">${t.active ? 'Active' : 'Paused'}</button>
+                </td>
+                <td class="px-4 py-3 flex items-center justify-end gap-1">
+                    <button onclick="editRecurring('${t.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                    <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                </td>
+            </tr>
+        `).join('');
     }
 
     // Modal helpers
