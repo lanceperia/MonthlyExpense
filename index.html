@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Expense Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 800: '#1a1a2e', 700: '#16213e', 600: '#0f3460', 500: '#1a1a3e' },
+                        accent: { DEFAULT: '#0ea5e9', light: '#38bdf8', dark: '#0284c7' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .modal-backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+        .expandable-row { cursor: pointer; }
+        .expandable-row:hover { background: rgba(14,165,233,0.05); }
+        .transaction-details { display: none; }
+        .transaction-details.open { display: table-row; }
+    </style>
+</head>
+<body class="dark bg-dark-800 text-gray-100 min-h-screen">
+    <!-- Login Screen -->
+    <div id="login-screen" class="flex items-center justify-center min-h-screen">
+        <div class="bg-dark-700 p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full mx-4">
+            <h1 class="text-2xl font-bold mb-2 text-accent">Monthly Expense Tracker</h1>
+            <p class="text-gray-400 mb-6">Sign in to manage your expenses</p>
+            <button onclick="signIn()" class="bg-accent hover:bg-accent-dark text-white font-semibold py-3 px-6 rounded-lg w-full transition-colors">
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Header -->
+        <header class="bg-dark-700 border-b border-gray-700/50 sticky top-0 z-30">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                <h1 class="text-xl font-bold text-accent">Expense Tracker</h1>
+                <div class="flex items-center gap-3">
+                    <button onclick="openAddPurchase()" class="bg-accent hover:bg-accent-dark text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
+                        + Add Purchase
+                    </button>
+                    <button onclick="openSettings()" class="p-2 hover:bg-gray-700 rounded-lg transition-colors" title="Settings">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </button>
+                    <button onclick="signOut()" class="text-gray-400 hover:text-gray-200 text-sm">Sign Out</button>
+                </div>
+            </div>
+            <!-- Tabs -->
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="flex gap-1">
+                    <button id="tab-monthly" onclick="switchTab('monthly')" class="px-4 py-2 text-sm font-medium border-b-2 border-accent text-accent">Monthly</button>
+                    <button id="tab-summary" onclick="switchTab('summary')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Summary</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Monthly View -->
+        <div id="view-monthly" class="max-w-6xl mx-auto px-4 py-6">
+            <!-- Month Picker & Budget -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-2">
+                    <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span id="current-month-label" class="text-lg font-semibold min-w-[160px] text-center"></span>
+                    <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+                <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap gap-4 text-sm">
+                    <div><span class="text-gray-400">Budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
+                    <div><span class="text-gray-400">Spent:</span> <span id="spent-amount" class="font-semibold">₱0</span></div>
+                    <div id="remaining-display"><span class="text-gray-400">Remaining:</span> <span id="remaining-amount" class="font-semibold text-green-400">₱0</span></div>
+                </div>
+            </div>
+
+            <!-- Grouped Table -->
+            <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthly-table-body"></tbody>
+                </table>
+                <div id="monthly-empty" class="hidden text-center py-12 text-gray-500">No purchases this month</div>
+            </div>
+        </div>
+
+        <!-- Summary View -->
+        <div id="view-summary" class="max-w-6xl mx-auto px-4 py-6 hidden">
+            <div class="flex items-center gap-4 mb-6">
+                <label class="text-sm text-gray-400">Year:</label>
+                <select id="summary-year" onchange="renderSummary()" class="bg-dark-700 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+            </div>
+
+            <!-- Pie Chart -->
+            <div class="bg-dark-700 rounded-xl p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Spending by Category</h3>
+                <div class="max-w-md mx-auto">
+                    <canvas id="pie-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Yearly Totals Table -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-dark-700 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Total by Bank</h3>
+                    <table class="w-full text-sm">
+                        <thead><tr class="border-b border-gray-700/50 text-left text-gray-400"><th class="pb-2">Bank</th><th class="pb-2 text-right">Total</th></tr></thead>
+                        <tbody id="summary-bank-table"></tbody>
+                    </table>
+                </div>
+                <div class="bg-dark-700 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Total by Category</h3>
+                    <table class="w-full text-sm">
+                        <thead><tr class="border-b border-gray-700/50 text-left text-gray-400"><th class="pb-2">Category</th><th class="pb-2 text-right">Total</th></tr></thead>
+                        <tbody id="summary-category-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Purchase Modal -->
+    <div id="modal-purchase" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h2 id="modal-purchase-title" class="text-lg font-bold mb-4">Add Purchase</h2>
+            <form id="purchase-form" onsubmit="savePurchase(event)">
+                <input type="hidden" id="purchase-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bank</label>
+                        <select id="purchase-bank" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Category</label>
+                        <select id="purchase-category" required onchange="toggleOthersInput()" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div id="others-input-wrapper" class="hidden">
+                        <label class="block text-sm text-gray-400 mb-1">Specify</label>
+                        <input type="text" id="purchase-others" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Enter item description">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Date</label>
+                        <input type="date" id="purchase-date" required onclick="this.showPicker()" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Amount (₱)</label>
+                        <input type="number" id="purchase-amount" required step="0.01" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-purchase')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-lg font-bold mb-4">Settings</h2>
+
+            <!-- Budget Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Budget</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Default Monthly Budget (₱)</label>
+                        <input type="number" id="settings-default-budget" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Override for <span id="settings-override-month-label"></span> (₱) — leave blank to use default</label>
+                        <input type="number" id="settings-month-override" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Use default">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Categories</h3>
+                <div id="categories-list" class="space-y-2 mb-3"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="new-category-input" class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="New category">
+                    <button onclick="addCategory()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors">Add</button>
+                </div>
+            </div>
+
+            <!-- Banks Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Banks</h3>
+                <div id="banks-list" class="space-y-2 mb-3"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="new-bank-name" class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Bank name">
+                    <input type="number" id="new-bank-soa" min="1" max="28" class="w-20 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="SOA">
+                    <button onclick="addBank()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors">Add</button>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeModal('modal-settings')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Close</button>
+                <button onclick="saveSettings()" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="modal-delete" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h2 class="text-lg font-bold mb-2">Delete Purchase</h2>
+            <p class="text-gray-400 text-sm mb-6">Are you sure you want to delete this purchase? This cannot be undone.</p>
+            <input type="hidden" id="delete-purchase-id">
+            <div class="flex gap-3">
+                <button onclick="closeModal('modal-delete')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors text-sm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Firebase Config - Replace with your own
+    const firebaseConfig = {
+    apiKey: "AIzaSyAie1-uoDBkjhL-uJn1ZSQPBpNGBz5rUQc",
+    authDomain: "tradingjournal-42927.firebaseapp.com",
+    projectId: "tradingjournal-42927",
+    storageBucket: "tradingjournal-42927.firebasestorage.app",
+    messagingSenderId: "825476972330",
+    appId: "1:825476972330:web:b2fd27f195c95ba940a853",
+    measurementId: "G-2M17JDFQHJ"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let purchases = [];
+    let categories = [];
+    let banks = [];
+    let settings = { defaultBudget: 0, monthOverrides: {} };
+    let pieChart = null;
+    let sortColumn = 'total';
+    let sortDirection = 'desc';
+
+    const DEFAULT_CATEGORIES = ['Medicine', 'Online Shop', 'Food Delivery', 'Gas', 'Toll', 'Dine In', 'Haircut', 'Grocery', 'Insurance', 'Entertainment', 'PMS', 'Payment', 'Others'];
+    const DEFAULT_BANKS = [
+        { name: 'BPI', soaDate: 15 },
+        { name: 'BDO', soaDate: 9 },
+        { name: 'RCBC', soaDate: 9 },
+        { name: 'UB', soaDate: 9 }
+    ];
+
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Auth
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            loadData();
+        } else {
+            currentUser = null;
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('app').classList.add('hidden');
+        }
+    });
+
+    function signIn() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider);
+    }
+
+    function signOut() {
+        auth.signOut();
+    }
+
+    // Firestore helpers
+    function userDoc(collection) {
+        return db.collection('users').doc(currentUser.uid).collection(collection);
+    }
+
+    async function loadData() {
+        await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases()]);
+        renderMonthly();
+    }
+
+    async function loadCategories() {
+        const snap = await userDoc('categories').orderBy('name').get();
+        if (snap.empty) {
+            for (const cat of DEFAULT_CATEGORIES) {
+                await userDoc('categories').add({ name: cat });
+            }
+            categories = [...DEFAULT_CATEGORIES];
+        } else {
+            categories = snap.docs.map(d => d.data().name);
+        }
+    }
+
+    async function loadBanks() {
+        const snap = await userDoc('banks').orderBy('name').get();
+        if (snap.empty) {
+            for (const bank of DEFAULT_BANKS) {
+                await userDoc('banks').add(bank);
+            }
+            banks = [...DEFAULT_BANKS];
+        } else {
+            banks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+    }
+
+    async function loadSettings() {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (doc.exists && doc.data().settings) {
+            settings = doc.data().settings;
+        }
+    }
+
+    async function loadPurchases() {
+        const snap = await userDoc('purchases').get();
+        purchases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    // SOA Logic: determine billing month for a purchase
+    function getBillingMonth(purchaseDate, bankName) {
+        const date = new Date(purchaseDate);
+        const day = date.getDate();
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        const bank = banks.find(b => b.name === bankName);
+        const soaDate = bank ? bank.soaDate : 1;
+
+        if (day >= soaDate) {
+            if (month === 11) return { month: 0, year: year + 1 };
+            return { month: month + 1, year: year };
+        }
+        return { month, year };
+    }
+
+    // Get purchases for a billing month
+    function getPurchasesForMonth(month, year) {
+        return purchases.filter(p => {
+            const billing = getBillingMonth(p.date, p.bank);
+            return billing.month === month && billing.year === year;
+        });
+    }
+
+    // Render Monthly View
+    function renderMonthly() {
+        document.getElementById('current-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+
+        const monthPurchases = getPurchasesForMonth(currentMonth, currentYear);
+        const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+        const monthKey = `${currentYear}-${currentMonth}`;
+        const budget = settings.monthOverrides && settings.monthOverrides[monthKey] != null
+            ? settings.monthOverrides[monthKey]
+            : (settings.defaultBudget || 0);
+
+        document.getElementById('budget-amount').textContent = `₱${formatNumber(budget)}`;
+        document.getElementById('spent-amount').textContent = `₱${formatNumber(totalSpent)}`;
+
+        const remaining = budget - totalSpent;
+        const remainingEl = document.getElementById('remaining-amount');
+        if (remaining >= 0) {
+            remainingEl.textContent = `₱${formatNumber(remaining)}`;
+            remainingEl.className = 'font-semibold text-green-400';
+            document.querySelector('#remaining-display .text-gray-400').textContent = 'Remaining:';
+        } else {
+            remainingEl.textContent = `₱${formatNumber(Math.abs(remaining))}`;
+            remainingEl.className = 'font-semibold text-red-400';
+            document.querySelector('#remaining-display .text-gray-400').textContent = 'Overspent:';
+        }
+
+        // Group by bank then category
+        const grouped = {};
+        monthPurchases.forEach(p => {
+            const groupCategory = p.category === 'Others' ? (p.othersText || 'Others') : p.category;
+            const key = `${p.bank}|||${groupCategory}`;
+            if (!grouped[key]) grouped[key] = { bank: p.bank, category: groupCategory, total: 0, items: [] };
+            grouped[key].total += parseFloat(p.amount);
+            grouped[key].items.push(p);
+        });
+
+        const sorted = Object.values(grouped).sort((a, b) => {
+            let cmp = 0;
+            if (sortColumn === 'total') cmp = a.total - b.total;
+            else if (sortColumn === 'bank') cmp = a.bank.localeCompare(b.bank);
+            else if (sortColumn === 'category') cmp = a.category.localeCompare(b.category);
+            return sortDirection === 'asc' ? cmp : -cmp;
+        });
+
+        const tbody = document.getElementById('monthly-table-body');
+        const emptyMsg = document.getElementById('monthly-empty');
+
+        if (sorted.length === 0) {
+            tbody.innerHTML = '';
+            emptyMsg.classList.remove('hidden');
+            return;
+        }
+
+        emptyMsg.classList.add('hidden');
+        let html = '';
+
+        const editIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>`;
+        const delIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+
+        sorted.forEach((group, idx) => {
+            const categoryLabel = group.category;
+            const isPayment = group.items[0].category === 'Payment';
+            const amountDisplay = isPayment ? `<span class="text-red-400">₱${formatNumber(group.total)}</span>` : `₱${formatNumber(group.total)}`;
+
+            const hasMultiple = group.items.length > 1;
+            html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
+                <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
+                <td class="px-4 py-3 text-sm">${categoryLabel}</td>
+                <td class="px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
+                <td class="px-4 py-3 text-center flex items-center justify-end gap-1">
+                    ${!hasMultiple ? `
+                        <button onclick="event.stopPropagation(); editPurchase('${group.items[0].id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                        <button onclick="event.stopPropagation(); deletePurchase('${group.items[0].id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                    ` : `<svg class="w-4 h-4 text-gray-500 transition-transform expand-icon-${idx}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`}
+                </td>
+            </tr>`;
+            if (hasMultiple) {
+                html += `<tr class="transaction-details" id="details-${idx}"><td colspan="4" class="px-4 py-2 bg-dark-800/50">
+                    <table class="w-full text-sm">
+                        ${group.items.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount)).map(item => {
+                            const itemIsPayment = item.category === 'Payment';
+                            const itemAmount = itemIsPayment ? `<span class="text-red-400">(₱${formatNumber(parseFloat(item.amount))})</span>` : `₱${formatNumber(parseFloat(item.amount))}`;
+                            return `
+                            <tr class="border-b border-gray-700/20">
+                                <td class="py-2 text-gray-400">${formatDate(item.date)}</td>
+                                <td class="py-2 text-right font-medium">${itemAmount}</td>
+                                <td class="py-2 text-right w-20">
+                                    <button onclick="event.stopPropagation(); editPurchase('${item.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                                    <button onclick="event.stopPropagation(); deletePurchase('${item.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </table>
+                </td></tr>`;
+            }
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    function toggleExpand(idx) {
+        const row = document.getElementById(`details-${idx}`);
+        row.classList.toggle('open');
+        const icon = document.querySelector(`.expand-icon-${idx}`);
+        if (icon) icon.style.transform = row.classList.contains('open') ? 'rotate(180deg)' : '';
+    }
+
+    function sortTable(column) {
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = column === 'total' ? 'desc' : 'asc';
+        }
+        updateSortIcons();
+        renderMonthly();
+    }
+
+    function updateSortIcons() {
+        ['bank', 'category', 'total'].forEach(col => {
+            const el = document.getElementById(`sort-icon-${col}`);
+            if (col === sortColumn) {
+                el.textContent = sortDirection === 'asc' ? '▲' : '▼';
+            } else {
+                el.textContent = '';
+            }
+        });
+    }
+
+    // Render Summary View
+    function renderSummary() {
+        const year = parseInt(document.getElementById('summary-year').value);
+        const yearPurchases = purchases.filter(p => {
+            if (p.category === 'Payment') return false;
+            const billing = getBillingMonth(p.date, p.bank);
+            return billing.year === year;
+        });
+
+        // Pie chart by category
+        const catTotals = {};
+        yearPurchases.forEach(p => {
+            const cat = p.category;
+            catTotals[cat] = (catTotals[cat] || 0) + parseFloat(p.amount);
+        });
+
+        const catLabels = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+        const catData = catLabels.map(c => catTotals[c]);
+        const colors = generateColors(catLabels.length);
+
+        if (pieChart) pieChart.destroy();
+        const ctx = document.getElementById('pie-chart').getContext('2d');
+        pieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: catLabels,
+                datasets: [{ data: catData, backgroundColor: colors, borderWidth: 0 }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12 } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.label}: ₱${formatNumber(ctx.raw)}`
+                        }
+                    }
+                }
+            }
+        });
+
+        // Bank totals table
+        const bankTotals = {};
+        yearPurchases.forEach(p => { bankTotals[p.bank] = (bankTotals[p.bank] || 0) + parseFloat(p.amount); });
+        const bankSorted = Object.entries(bankTotals).sort((a, b) => b[1] - a[1]);
+        document.getElementById('summary-bank-table').innerHTML = bankSorted.map(([bank, total]) =>
+            `<tr class="border-b border-gray-700/30"><td class="py-2">${bank}</td><td class="py-2 text-right font-semibold">₱${formatNumber(total)}</td></tr>`
+        ).join('') || '<tr><td colspan="2" class="py-4 text-center text-gray-500">No data</td></tr>';
+
+        // Category totals table
+        document.getElementById('summary-category-table').innerHTML = catLabels.map(cat =>
+            `<tr class="border-b border-gray-700/30"><td class="py-2">${cat}</td><td class="py-2 text-right font-semibold">₱${formatNumber(catTotals[cat])}</td></tr>`
+        ).join('') || '<tr><td colspan="2" class="py-4 text-center text-gray-500">No data</td></tr>';
+    }
+
+    function populateYearDropdown() {
+        const years = new Set();
+        purchases.forEach(p => {
+            const billing = getBillingMonth(p.date, p.bank);
+            years.add(billing.year);
+        });
+        years.add(currentYear);
+        const sorted = [...years].sort((a, b) => b - a);
+        const select = document.getElementById('summary-year');
+        select.innerHTML = sorted.map(y => `<option value="${y}"${y === currentYear ? ' selected' : ''}>${y}</option>`).join('');
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+        document.getElementById('view-monthly').classList.toggle('hidden', tab !== 'monthly');
+        document.getElementById('view-summary').classList.toggle('hidden', tab !== 'summary');
+        document.getElementById('tab-monthly').classList.toggle('border-accent', tab === 'monthly');
+        document.getElementById('tab-monthly').classList.toggle('text-accent', tab === 'monthly');
+        document.getElementById('tab-monthly').classList.toggle('border-transparent', tab !== 'monthly');
+        document.getElementById('tab-monthly').classList.toggle('text-gray-400', tab !== 'monthly');
+        document.getElementById('tab-summary').classList.toggle('border-accent', tab === 'summary');
+        document.getElementById('tab-summary').classList.toggle('text-accent', tab === 'summary');
+        document.getElementById('tab-summary').classList.toggle('border-transparent', tab !== 'summary');
+        document.getElementById('tab-summary').classList.toggle('text-gray-400', tab !== 'summary');
+
+        if (tab === 'summary') {
+            populateYearDropdown();
+            renderSummary();
+        }
+    }
+
+    // Month navigation
+    function changeMonth(delta) {
+        currentMonth += delta;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        renderMonthly();
+    }
+
+    // Add Purchase Modal
+    function openAddPurchase() {
+        document.getElementById('modal-purchase-title').textContent = 'Add Purchase';
+        document.getElementById('purchase-id').value = '';
+        document.getElementById('purchase-form').reset();
+        document.getElementById('purchase-date').value = new Date().toISOString().split('T')[0];
+        populatePurchaseDropdowns();
+        document.getElementById('others-input-wrapper').classList.add('hidden');
+        openModal('modal-purchase');
+    }
+
+    function populatePurchaseDropdowns() {
+        const bankSelect = document.getElementById('purchase-bank');
+        const catSelect = document.getElementById('purchase-category');
+        const bankList = Array.isArray(banks[0]) ? banks : banks.map(b => typeof b === 'string' ? b : b.name);
+        bankSelect.innerHTML = bankList.map(b => `<option value="${typeof b === 'object' ? b.name : b}">${typeof b === 'object' ? b.name : b}</option>`).join('');
+        const sortedCats = categories.filter(c => c !== 'Others').concat(['Others']);
+        catSelect.innerHTML = sortedCats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function toggleOthersInput() {
+        const val = document.getElementById('purchase-category').value;
+        document.getElementById('others-input-wrapper').classList.toggle('hidden', val !== 'Others');
+        if (val === 'Others') document.getElementById('purchase-others').required = true;
+        else document.getElementById('purchase-others').required = false;
+    }
+
+    async function savePurchase(e) {
+        e.preventDefault();
+        const id = document.getElementById('purchase-id').value;
+        const data = {
+            bank: document.getElementById('purchase-bank').value,
+            category: document.getElementById('purchase-category').value,
+            date: document.getElementById('purchase-date').value,
+            amount: parseFloat(document.getElementById('purchase-amount').value),
+            othersText: document.getElementById('purchase-category').value === 'Others' ? document.getElementById('purchase-others').value : ''
+        };
+
+        if (id) {
+            await userDoc('purchases').doc(id).update(data);
+            const idx = purchases.findIndex(p => p.id === id);
+            if (idx !== -1) purchases[idx] = { id, ...data };
+        } else {
+            const ref = await userDoc('purchases').add(data);
+            purchases.push({ id: ref.id, ...data });
+        }
+
+        closeModal('modal-purchase');
+        renderMonthly();
+    }
+
+    function editPurchase(id) {
+        const purchase = purchases.find(p => p.id === id);
+        if (!purchase) return;
+        document.getElementById('modal-purchase-title').textContent = 'Edit Purchase';
+        document.getElementById('purchase-id').value = id;
+        populatePurchaseDropdowns();
+        document.getElementById('purchase-bank').value = purchase.bank;
+        document.getElementById('purchase-category').value = purchase.category;
+        document.getElementById('purchase-date').value = purchase.date;
+        document.getElementById('purchase-amount').value = purchase.amount;
+        if (purchase.category === 'Others') {
+            document.getElementById('others-input-wrapper').classList.remove('hidden');
+            document.getElementById('purchase-others').value = purchase.othersText || '';
+        } else {
+            document.getElementById('others-input-wrapper').classList.add('hidden');
+        }
+        openModal('modal-purchase');
+    }
+
+    function deletePurchase(id) {
+        document.getElementById('delete-purchase-id').value = id;
+        openModal('modal-delete');
+    }
+
+    async function confirmDelete() {
+        const id = document.getElementById('delete-purchase-id').value;
+        await userDoc('purchases').doc(id).delete();
+        purchases = purchases.filter(p => p.id !== id);
+        closeModal('modal-delete');
+        renderMonthly();
+    }
+
+    // Settings
+    function openSettings() {
+        document.getElementById('settings-default-budget').value = settings.defaultBudget || '';
+        const monthKey = `${currentYear}-${currentMonth}`;
+        document.getElementById('settings-override-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+        document.getElementById('settings-month-override').value = settings.monthOverrides && settings.monthOverrides[monthKey] != null ? settings.monthOverrides[monthKey] : '';
+
+        // Render categories
+        const catList = document.getElementById('categories-list');
+        catList.innerHTML = categories.filter(c => c !== 'Others').map(c =>
+            `<div class="flex items-center justify-between bg-dark-800 rounded-lg px-3 py-2">
+                <span class="text-sm">${c}</span>
+                <button onclick="removeCategory('${c}')" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+            </div>`
+        ).join('');
+
+        // Render banks
+        const bankList = document.getElementById('banks-list');
+        bankList.innerHTML = banks.map(b => {
+            const name = typeof b === 'string' ? b : b.name;
+            const soa = typeof b === 'object' ? b.soaDate : 1;
+            return `<div class="flex items-center justify-between bg-dark-800 rounded-lg px-3 py-2">
+                <span class="text-sm">${name} <span class="text-gray-500">(SOA: ${soa})</span></span>
+                <button onclick="removeBank('${name}')" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+            </div>`;
+        }).join('');
+
+        openModal('modal-settings');
+    }
+
+    async function saveSettings() {
+        const defaultBudget = parseFloat(document.getElementById('settings-default-budget').value) || 0;
+        const monthKey = `${currentYear}-${currentMonth}`;
+        const overrideVal = document.getElementById('settings-month-override').value;
+
+        settings.defaultBudget = defaultBudget;
+        if (!settings.monthOverrides) settings.monthOverrides = {};
+        if (overrideVal !== '') {
+            settings.monthOverrides[monthKey] = parseFloat(overrideVal);
+        } else {
+            delete settings.monthOverrides[monthKey];
+        }
+
+        await db.collection('users').doc(currentUser.uid).set({ settings }, { merge: true });
+        closeModal('modal-settings');
+        renderMonthly();
+    }
+
+    async function addCategory() {
+        const input = document.getElementById('new-category-input');
+        const name = input.value.trim();
+        if (!name || categories.includes(name)) return;
+        await userDoc('categories').add({ name });
+        categories.push(name);
+        categories.sort();
+        input.value = '';
+        openSettings();
+    }
+
+    async function removeCategory(name) {
+        const snap = await userDoc('categories').where('name', '==', name).get();
+        snap.forEach(doc => doc.ref.delete());
+        categories = categories.filter(c => c !== name);
+        openSettings();
+    }
+
+    async function addBank() {
+        const nameInput = document.getElementById('new-bank-name');
+        const soaInput = document.getElementById('new-bank-soa');
+        const name = nameInput.value.trim();
+        const soa = parseInt(soaInput.value) || 1;
+        if (!name || banks.find(b => (typeof b === 'object' ? b.name : b) === name)) return;
+        const ref = await userDoc('banks').add({ name, soaDate: soa });
+        banks.push({ id: ref.id, name, soaDate: soa });
+        nameInput.value = '';
+        soaInput.value = '';
+        openSettings();
+    }
+
+    async function removeBank(name) {
+        const snap = await userDoc('banks').where('name', '==', name).get();
+        snap.forEach(doc => doc.ref.delete());
+        banks = banks.filter(b => (typeof b === 'object' ? b.name : b) !== name);
+        openSettings();
+    }
+
+    // Modal helpers
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // Utility
+    function formatNumber(n) {
+        return n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function generateColors(count) {
+        const palette = [
+            '#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
+            '#ef4444', '#6366f1', '#14b8a6', '#f97316', '#84cc16',
+            '#06b6d4', '#a855f7', '#e11d48', '#eab308', '#22c55e'
+        ];
+        const colors = [];
+        for (let i = 0; i < count; i++) colors.push(palette[i % palette.length]);
+        return colors;
+    }
+
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal(modal.id);
+        });
+    });
+    </script>
+</body>
+</html>
