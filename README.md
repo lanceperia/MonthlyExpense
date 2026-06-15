@@ -7,6 +7,7 @@ A personal expense tracking web app built with vanilla JavaScript and Firebase. 
 - **Google Sign-In** — all data is per-user, stored in Firebase Firestore
 - **SOA Billing Cycles** — purchases are attributed to billing months based on each bank's Statement of Account (SOA) date, mimicking credit card billing
 - **Monthly View** — grouped by bank and category, sortable columns, expandable rows for multiple transactions
+- **Bank Summary** — per-month overview of each bank's total, actual SOA amount, and paid status with sortable columns
 - **Summary View** — yearly spending breakdown with pie chart (by category) and totals by bank/category
 - **Recurring Expenses** — (optional) configure monthly recurring charges (subscriptions, mortgages) that auto-generate on app open
 - **Budget Tracking** — set a default monthly budget with per-month overrides; shows remaining/overspent
@@ -29,7 +30,17 @@ Each bank has an SOA date (day of month). A purchase made on or after that day i
 
 ### Monthly Navigation
 
-Use the left/right arrows to browse billing months. The budget panel shows your budget, total spent, and remaining balance.
+Use the left/right arrows to browse billing months. Click **Today** to jump back to the current month. The budget panel shows your budget, total spent, and remaining balance.
+
+### Bank Summary
+
+Below the budget panel, a summary table shows each billable bank (excludes Cash) for the current month:
+
+- **Total** — computed total of all non-payment purchases for that bank
+- **SOA** — the actual amount from your Statement of Account (entered manually)
+- **Paid** — whether you've already paid this bank's bill
+
+Click the edit button on any row to update the SOA amount and paid status. Data is saved per bank per month.
 
 ### Summary
 
@@ -59,8 +70,8 @@ On each app open, any active recurring templates that haven't been generated for
 
 ## Tech Stack
 
-- Vanilla JavaScript (no framework)
-- Tailwind CSS (CDN)
+- Vanilla JavaScript (no framework) — `app.js`
+- Tailwind CSS (CDN) + custom styles — `styles.css`
 - Chart.js (CDN)
 - Firebase Auth + Firestore (CDN, compat mode)
 
@@ -73,5 +84,6 @@ users/{uid}/
   banks/         — bank names + SOA dates
   recurring/     — recurring expense templates
   recurringLog/  — tracks which templates have been generated for which billing month
+  bankMonthly/   — per-bank per-month data (SOA amount, paid status), keyed as {bankName}-{year}-{month}
   (document)     — stores settings (budget, feature flags)
 ```
