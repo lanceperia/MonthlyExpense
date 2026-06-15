@@ -81,7 +81,7 @@
                     </button>
                     <button onclick="goToToday()" class="ml-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors">Today</button>
                 </div>
-                <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap gap-4 text-sm">
+                <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap justify-center gap-4 text-sm">
                     <div><span class="text-gray-400">Budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
                     <div><span class="text-gray-400">Spent:</span> <span id="spent-amount" class="font-semibold">₱0</span></div>
                     <div id="remaining-display"><span class="text-gray-400">Remaining:</span> <span id="remaining-amount" class="font-semibold text-green-400">₱0</span></div>
@@ -102,9 +102,9 @@
                     <thead>
                         <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('bank')">Bank <span id="sort-icon-bs-bank" class="text-xs"></span></th>
-                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('total')">Total <span id="sort-icon-bs-total" class="text-xs"></span></th>
-                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('soa')">SOA <span id="sort-icon-bs-soa" class="text-xs"></span></th>
-                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-center" onclick="sortBankSummary('paid')">Paid <span id="sort-icon-bs-paid" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('total')">Total <span id="sort-icon-bs-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('soa')">SOA <span id="sort-icon-bs-soa" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('paid')">Paid <span id="sort-icon-bs-paid" class="text-xs"></span></th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -115,18 +115,12 @@
             <!-- Grouped Table -->
             <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Purchases</h2>
             <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-x-auto">
-                <table class="w-full table-fixed">
-                    <colgroup>
-                        <col class="w-1/4">
-                        <col class="w-1/4">
-                        <col class="w-1/4">
-                        <col class="w-[50px]">
-                    </colgroup>
+                <table class="w-full min-w-[500px]">
                     <thead>
                         <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -177,24 +171,15 @@
                 <button onclick="openAddRecurring()" class="bg-accent hover:bg-accent-dark text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">+ Add Recurring</button>
             </div>
             <div class="bg-dark-700 rounded-xl overflow-x-auto">
-                <table class="w-full table-fixed">
-                    <colgroup>
-                        <col class="w-1/7">
-                        <col class="w-1/7">
-                        <col class="w-1/7">
-                        <col class="w-1/7">
-                        <col class="w-1/7">
-                        <col class="w-1/7">
-                        <col class="w-[60px]">
-                    </colgroup>
+                <table class="w-full min-w-[700px]">
                     <thead>
                         <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('bank')">Bank <span id="sort-icon-r-bank" class="text-xs"></span></th>
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('category')">Category <span id="sort-icon-r-category" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('amount')">Amount <span id="sort-icon-r-amount" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('day')">Day <span id="sort-icon-r-day" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('endDate')">Until <span id="sort-icon-r-endDate" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('active')">Active <span id="sort-icon-r-active" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('amount')">Amount <span id="sort-icon-r-amount" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('day')">Day <span id="sort-icon-r-day" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('endDate')">Until <span id="sort-icon-r-endDate" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortRecurringTable('active')">Active <span id="sort-icon-r-active" class="text-xs"></span></th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>

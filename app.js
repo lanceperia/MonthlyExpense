@@ -213,9 +213,9 @@ function renderBankSummary(monthPurchases) {
 
         return `<tr class="border-b border-gray-700/30 whitespace-nowrap">
             <td class="px-4 py-3 text-sm font-medium">${bank.name}</td>
-            <td class="px-4 py-3 text-sm font-semibold text-right">₱${formatNumber(total)}</td>
-            <td class="px-4 py-3 text-sm text-right">${soaAmount}</td>
-            <td class="px-4 py-3 text-sm text-center">${paidLabel}</td>
+            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(total)}</td>
+            <td class="px-4 py-3 text-sm">${soaAmount}</td>
+            <td class="px-4 py-3 text-sm">${paidLabel}</td>
             <td class="px-4 py-3 w-10">
                 <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
             </td>
@@ -404,7 +404,7 @@ function renderMonthly() {
         html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30 whitespace-nowrap" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
             <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
             <td class="px-4 py-3 text-sm">${categoryLabel}</td>
-            <td class="px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
+            <td class="px-4 py-3 text-sm font-semibold">${amountDisplay}</td>
             <td class="px-4 py-3 w-10">
                 ${!hasMultiple ? `
                     <div class="flex items-center justify-end gap-1">
@@ -415,23 +415,22 @@ function renderMonthly() {
             </td>
         </tr>`;
         if (hasMultiple) {
-            html += `<tr class="transaction-details" id="details-${idx}"><td colspan="4" class="px-4 py-2 bg-dark-800/50">
-                <table class="w-full text-sm">
-                    ${group.items.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount)).map(item => {
-                        const itemIsPayment = item.category === 'Payment';
-                        const itemAmount = itemIsPayment ? `<span class="text-red-400">(₱${formatNumber(parseFloat(item.amount))})</span>` : `₱${formatNumber(parseFloat(item.amount))}`;
-                        return `
-                        <tr class="border-b border-gray-700/20">
-                            <td class="py-2 text-gray-400">${formatDate(item.date)}</td>
-                            <td class="py-2 text-right font-medium">${itemAmount}</td>
-                            <td class="py-2 text-right w-20">
-                                <button onclick="event.stopPropagation(); editPurchase('${item.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
-                                <button onclick="event.stopPropagation(); deletePurchase('${item.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
-                            </td>
-                        </tr>`;
-                    }).join('')}
-                </table>
-            </td></tr>`;
+            html += group.items.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount)).map(item => {
+                const itemIsPayment = item.category === 'Payment';
+                const itemAmount = itemIsPayment ? `<span class="text-red-400">(₱${formatNumber(parseFloat(item.amount))})</span>` : `₱${formatNumber(parseFloat(item.amount))}`;
+                return `
+                <tr class="transaction-details details-${idx} bg-dark-800/50 border-b border-gray-700/20 text-sm">
+                    <td class="px-4 py-2 pl-8 text-gray-400">${formatDate(item.date)}</td>
+                    <td class="px-4 py-2 text-gray-400">${item.others || item.category}</td>
+                    <td class="px-4 py-2 font-medium">${itemAmount}</td>
+                    <td class="px-4 py-2">
+                        <div class="flex items-center gap-1">
+                            <button onclick="event.stopPropagation(); editPurchase('${item.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                            <button onclick="event.stopPropagation(); deletePurchase('${item.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
         }
     });
 
@@ -439,10 +438,11 @@ function renderMonthly() {
 }
 
 function toggleExpand(idx) {
-    const row = document.getElementById(`details-${idx}`);
-    row.classList.toggle('open');
+    const rows = document.querySelectorAll(`.details-${idx}`);
+    const isOpen = rows[0]?.classList.contains('open');
+    rows.forEach(r => r.classList.toggle('open', !isOpen));
     const icon = document.querySelector(`.expand-icon-${idx}`);
-    if (icon) icon.style.transform = row.classList.contains('open') ? 'rotate(180deg)' : '';
+    if (icon) icon.style.transform = !isOpen ? 'rotate(180deg)' : '';
 }
 
 function sortTable(column) {
@@ -931,10 +931,10 @@ function renderRecurring() {
         <tr class="border-b border-gray-700/30 whitespace-nowrap">
             <td class="px-4 py-3 text-sm font-medium">${t.bank}</td>
             <td class="px-4 py-3 text-sm">${t.category}</td>
-            <td class="px-4 py-3 text-sm text-right font-semibold">₱${formatNumber(t.amount)}</td>
-            <td class="px-4 py-3 text-sm text-center">${t.dayOfMonth}</td>
-            <td class="px-4 py-3 text-sm text-center">${t.endDate || '—'}</td>
-            <td class="px-4 py-3 text-center">
+            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(t.amount)}</td>
+            <td class="px-4 py-3 text-sm">${t.dayOfMonth}</td>
+            <td class="px-4 py-3 text-sm">${t.endDate || '—'}</td>
+            <td class="px-4 py-3">
                 <button onclick="toggleRecurringActive('${t.id}')" class="text-sm ${t.active ? 'text-green-400' : 'text-gray-500'}">${t.active ? 'Active' : 'Paused'}</button>
             </td>
             <td class="px-4 py-3">
