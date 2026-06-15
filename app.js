@@ -211,12 +211,12 @@ function renderBankSummary(monthPurchases) {
         const soaAmount = data.soaAmount != null ? `₱${formatNumber(data.soaAmount)}` : '—';
         const paidLabel = paid ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-500">No</span>';
 
-        return `<tr class="border-b border-gray-700/30">
-            <td class="px-2 sm:px-4 py-3 text-sm font-medium">${bank.name}</td>
-            <td class="px-2 sm:px-4 py-3 text-sm font-semibold text-right">₱${formatNumber(total)}</td>
-            <td class="px-2 sm:px-4 py-3 text-sm text-right">${soaAmount}</td>
-            <td class="px-2 sm:px-4 py-3 text-sm text-center">${paidLabel}</td>
-            <td class="px-2 sm:px-4 py-3 w-10">
+        return `<tr class="border-b border-gray-700/30 whitespace-nowrap">
+            <td class="px-4 py-3 text-sm font-medium">${bank.name}</td>
+            <td class="px-4 py-3 text-sm font-semibold text-right">₱${formatNumber(total)}</td>
+            <td class="px-4 py-3 text-sm text-right">${soaAmount}</td>
+            <td class="px-4 py-3 text-sm text-center">${paidLabel}</td>
+            <td class="px-4 py-3 w-10">
                 <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
             </td>
         </tr>`;
@@ -401,11 +401,11 @@ function renderMonthly() {
         const amountDisplay = isPayment ? `<span class="text-red-400">₱${formatNumber(group.total)}</span>` : `₱${formatNumber(group.total)}`;
 
         const hasMultiple = group.items.length > 1;
-        html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
-            <td class="px-2 sm:px-4 py-3 text-sm font-medium">${group.bank}</td>
-            <td class="px-2 sm:px-4 py-3 text-sm">${categoryLabel}</td>
-            <td class="px-2 sm:px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
-            <td class="px-2 sm:px-4 py-3 w-10">
+        html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30 whitespace-nowrap" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
+            <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
+            <td class="px-4 py-3 text-sm">${categoryLabel}</td>
+            <td class="px-4 py-3 text-sm text-right font-semibold">${amountDisplay}</td>
+            <td class="px-4 py-3 w-10">
                 ${!hasMultiple ? `
                     <div class="flex items-center justify-end gap-1">
                         <button onclick="event.stopPropagation(); editPurchase('${group.items[0].id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>

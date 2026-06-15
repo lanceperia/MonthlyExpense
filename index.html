@@ -90,15 +90,15 @@
 
             <!-- Bank Summary -->
             <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Summary</h2>
-            <div id="bank-summary-container" class="bg-dark-700 rounded-xl overflow-hidden mb-6">
+            <div id="bank-summary-container" class="bg-dark-700 rounded-xl overflow-x-auto mb-6">
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
-                            <th class="px-2 sm:px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('bank')">Bank <span id="sort-icon-bs-bank" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('total')">Total <span id="sort-icon-bs-total" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('soa')">SOA <span id="sort-icon-bs-soa" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('paid')">Paid <span id="sort-icon-bs-paid" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 w-10"></th>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('bank')">Bank <span id="sort-icon-bs-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('total')">Total <span id="sort-icon-bs-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none text-right" onclick="sortBankSummary('soa')">SOA <span id="sort-icon-bs-soa" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('paid')">Paid <span id="sort-icon-bs-paid" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-10"></th>
                         </tr>
                     </thead>
                     <tbody id="bank-summary-body"></tbody>
@@ -107,14 +107,14 @@
 
             <!-- Grouped Table -->
             <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Purchases</h2>
-            <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-hidden">
+            <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-x-auto">
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
-                            <th class="px-2 sm:px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
-                            <th class="px-2 sm:px-4 py-3 w-10"></th>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-10"></th>
                         </tr>
                     </thead>
                     <tbody id="monthly-table-body"></tbody>
