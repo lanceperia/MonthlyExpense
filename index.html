@@ -186,7 +186,10 @@
     <!-- Add/Edit Purchase Modal -->
     <div id="modal-purchase" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h2 id="modal-purchase-title" class="text-lg font-bold mb-4">Add Purchase</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-purchase-title" class="text-lg font-bold">Add Purchase</h2>
+                <button onclick="closeModal('modal-purchase')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
             <form id="purchase-form" onsubmit="savePurchase(event)">
                 <input type="hidden" id="purchase-id">
                 <div class="space-y-4">
@@ -222,7 +225,10 @@
     <!-- Settings Modal -->
     <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-lg font-bold mb-4">Settings</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Settings</h2>
+                <button onclick="closeModal('modal-settings')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
 
             <!-- Features Section -->
             <div class="mb-6">
@@ -279,7 +285,10 @@
     <!-- Delete Confirmation Modal -->
     <div id="modal-delete" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h2 class="text-lg font-bold mb-2">Delete Purchase</h2>
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-lg font-bold">Delete Purchase</h2>
+                <button onclick="closeModal('modal-delete')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
             <p class="text-gray-400 text-sm mb-6">Are you sure you want to delete this purchase? This cannot be undone.</p>
             <input type="hidden" id="delete-purchase-id">
             <div class="flex gap-3">
@@ -292,7 +301,10 @@
     <!-- Bank Monthly Modal -->
     <div id="modal-soa" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h2 class="text-lg font-bold mb-4">Bank Statement</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Bank Statement</h2>
+                <button onclick="closeModal('modal-soa')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
             <input type="hidden" id="soa-bank-name">
             <div class="mb-4">
                 <span id="soa-bank-label" class="text-sm text-gray-400"></span>
@@ -317,7 +329,10 @@
     <!-- Add/Edit Recurring Modal -->
     <div id="modal-recurring" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h2 id="modal-recurring-title" class="text-lg font-bold mb-4">Add Recurring Expense</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-recurring-title" class="text-lg font-bold">Add Recurring Expense</h2>
+                <button onclick="closeModal('modal-recurring')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
             <form id="recurring-form" onsubmit="saveRecurringTemplate(event)">
                 <input type="hidden" id="recurring-id">
                 <div class="space-y-4">
@@ -358,7 +373,10 @@
     <!-- Delete Recurring Confirmation Modal -->
     <div id="modal-delete-recurring" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h2 class="text-lg font-bold mb-2">Delete Recurring Expense</h2>
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-lg font-bold">Delete Recurring Expense</h2>
+                <button onclick="closeModal('modal-delete-recurring')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
             <p class="text-gray-400 text-sm mb-6">Are you sure you want to delete this recurring expense? This cannot be undone.</p>
             <input type="hidden" id="delete-recurring-id">
             <div class="flex gap-3">
