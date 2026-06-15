@@ -928,7 +928,7 @@ function renderRecurring() {
     const delIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
 
     tbody.innerHTML = sorted.map(t => `
-        <tr class="border-b border-gray-700/30">
+        <tr class="border-b border-gray-700/30 whitespace-nowrap">
             <td class="px-4 py-3 text-sm font-medium">${t.bank}</td>
             <td class="px-4 py-3 text-sm">${t.category}</td>
             <td class="px-4 py-3 text-sm text-right font-semibold">₱${formatNumber(t.amount)}</td>
@@ -937,9 +937,11 @@ function renderRecurring() {
             <td class="px-4 py-3 text-center">
                 <button onclick="toggleRecurringActive('${t.id}')" class="text-sm ${t.active ? 'text-green-400' : 'text-gray-500'}">${t.active ? 'Active' : 'Paused'}</button>
             </td>
-            <td class="px-4 py-3 flex items-center justify-end gap-1">
-                <button onclick="editRecurring('${t.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
-                <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+            <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+                    <button onclick="editRecurring('${t.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                    <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                </div>
             </td>
         </tr>
     `).join('');
