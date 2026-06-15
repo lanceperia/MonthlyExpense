@@ -22,6 +22,7 @@ let banks = [];
 let settings = { defaultBudget: 0, monthOverrides: {} };
 let recurringTemplates = [];
 let recurringLog = [];
+let bankMonthlyData = {};
 let pieChart = null;
 let sortColumn = 'total';
 let sortDirection = 'desc';
@@ -66,7 +67,7 @@ function userDoc(collection) {
 }
 
 async function loadData() {
-    await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases(), loadRecurring(), loadRecurringLog()]);
+    await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases(), loadRecurring(), loadRecurringLog(), loadBankMonthly()]);
     updateRecurringTabVisibility();
     if (settings.recurringEnabled) {
         await generateRecurringPurchases();
@@ -123,6 +124,129 @@ async function loadRecurring() {
 async function loadRecurringLog() {
     const snap = await userDoc('recurringLog').get();
     recurringLog = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function loadBankMonthly() {
+    const snap = await userDoc('bankMonthly').get();
+    bankMonthlyData = {};
+    snap.docs.forEach(d => { bankMonthlyData[d.id] = d.data(); });
+}
+
+function getBankMonthlyKey(bankName, month, year) {
+    return `${bankName}-${year}-${String(month).padStart(2, '0')}`;
+}
+
+async function saveBankMonthlyField(bankName, month, year, field, value) {
+    const key = getBankMonthlyKey(bankName, month, year);
+    if (!bankMonthlyData[key]) bankMonthlyData[key] = {};
+    bankMonthlyData[key][field] = value;
+    await userDoc('bankMonthly').doc(key).set(bankMonthlyData[key], { merge: true });
+}
+
+let bsSortColumn = 'bank';
+let bsSortDirection = 'asc';
+
+function sortBankSummary(column) {
+    if (bsSortColumn === column) {
+        bsSortDirection = bsSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        bsSortColumn = column;
+        bsSortDirection = column === 'total' || column === 'soa' ? 'desc' : 'asc';
+    }
+    updateBsSortIcons();
+    renderMonthly();
+}
+
+function updateBsSortIcons() {
+    ['bank', 'total', 'soa', 'paid'].forEach(col => {
+        const el = document.getElementById(`sort-icon-bs-${col}`);
+        if (col === bsSortColumn) {
+            el.textContent = bsSortDirection === 'asc' ? '▲' : '▼';
+        } else {
+            el.textContent = '';
+        }
+    });
+}
+
+function renderBankSummary(monthPurchases) {
+    const container = document.getElementById('bank-summary-container');
+    const tbody = document.getElementById('bank-summary-body');
+    const billableBanks = banks.filter(b => b.soaDate && b.soaDate > 0);
+
+    if (billableBanks.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    const bankTotals = {};
+    monthPurchases.forEach(p => {
+        if (p.category === 'Payment') return;
+        bankTotals[p.bank] = (bankTotals[p.bank] || 0) + parseFloat(p.amount);
+    });
+
+    const editIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>`;
+
+    const sortedBanks = [...billableBanks].sort((a, b) => {
+        const keyA = getBankMonthlyKey(a.name, currentMonth, currentYear);
+        const keyB = getBankMonthlyKey(b.name, currentMonth, currentYear);
+        const dataA = bankMonthlyData[keyA] || {};
+        const dataB = bankMonthlyData[keyB] || {};
+        const totalA = bankTotals[a.name] || 0;
+        const totalB = bankTotals[b.name] || 0;
+        let cmp = 0;
+        if (bsSortColumn === 'bank') cmp = a.name.localeCompare(b.name);
+        else if (bsSortColumn === 'total') cmp = totalA - totalB;
+        else if (bsSortColumn === 'soa') cmp = (dataA.soaAmount || 0) - (dataB.soaAmount || 0);
+        else if (bsSortColumn === 'paid') cmp = (dataA.paid ? 1 : 0) - (dataB.paid ? 1 : 0);
+        return bsSortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    tbody.innerHTML = sortedBanks.map(bank => {
+        const key = getBankMonthlyKey(bank.name, currentMonth, currentYear);
+        const data = bankMonthlyData[key] || {};
+        const total = bankTotals[bank.name] || 0;
+        const paid = data.paid || false;
+        const soaAmount = data.soaAmount != null ? `₱${formatNumber(data.soaAmount)}` : '—';
+        const paidLabel = paid ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-500">No</span>';
+
+        return `<tr class="border-b border-gray-700/30">
+            <td class="px-4 py-3 text-sm font-medium">${bank.name}</td>
+            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(total)}</td>
+            <td class="px-4 py-3 text-sm">${soaAmount}</td>
+            <td class="px-4 py-3 text-sm text-center">${paidLabel}</td>
+            <td class="px-4 py-3 text-center flex items-center justify-end">
+                <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    updateBsSortIcons();
+}
+
+function openSoaModal(bankName) {
+    document.getElementById('soa-bank-name').value = bankName;
+    document.getElementById('soa-bank-label').textContent = `${bankName} — ${MONTH_NAMES[currentMonth]} ${currentYear}`;
+    const key = getBankMonthlyKey(bankName, currentMonth, currentYear);
+    const data = bankMonthlyData[key] || {};
+    document.getElementById('soa-amount-input').value = data.soaAmount != null ? data.soaAmount : '';
+    document.getElementById('soa-paid-input').checked = data.paid || false;
+    openModal('modal-soa');
+}
+
+async function saveSoaAmount() {
+    const bankName = document.getElementById('soa-bank-name').value;
+    const val = document.getElementById('soa-amount-input').value;
+    const amount = val ? parseFloat(val) : null;
+    const paid = document.getElementById('soa-paid-input').checked;
+    const key = getBankMonthlyKey(bankName, currentMonth, currentYear);
+    if (!bankMonthlyData[key]) bankMonthlyData[key] = {};
+    bankMonthlyData[key].soaAmount = amount;
+    bankMonthlyData[key].paid = paid;
+    await userDoc('bankMonthly').doc(key).set(bankMonthlyData[key], { merge: true });
+    closeModal('modal-soa');
+    renderMonthly();
 }
 
 async function generateRecurringPurchases() {
@@ -235,6 +359,8 @@ function renderMonthly() {
         remainingEl.className = 'font-semibold text-red-400';
         document.querySelector('#remaining-display .text-gray-400').textContent = 'Overspent:';
     }
+
+    renderBankSummary(monthPurchases);
 
     // Group by bank then category
     const grouped = {};
@@ -450,6 +576,12 @@ function changeMonth(delta) {
     currentMonth += delta;
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderMonthly();
+}
+
+function goToToday() {
+    currentMonth = new Date().getMonth();
+    currentYear = new Date().getFullYear();
     renderMonthly();
 }
 

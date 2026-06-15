@@ -79,6 +79,7 @@
                     <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
+                    <button onclick="goToToday()" class="ml-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors">Today</button>
                 </div>
                 <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap gap-4 text-sm">
                     <div><span class="text-gray-400">Budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
@@ -87,15 +88,33 @@
                 </div>
             </div>
 
-            <!-- Grouped Table -->
-            <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-hidden">
-                <table class="w-full">
+            <!-- Bank Summary -->
+            <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Summary</h2>
+            <div id="bank-summary-container" class="bg-dark-700 rounded-xl overflow-hidden mb-6">
+                <table class="w-full table-fixed">
                     <thead>
                         <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
-                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
-                            <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
-                            <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
-                            <th class="px-4 py-3 w-10"></th>
+                            <th class="px-4 py-3 w-[25%] cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('bank')">Bank <span id="sort-icon-bs-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[25%] cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('total')">Total <span id="sort-icon-bs-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[25%] cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('soa')">SOA <span id="sort-icon-bs-soa" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[15%] text-center cursor-pointer hover:text-gray-200 select-none" onclick="sortBankSummary('paid')">Paid <span id="sort-icon-bs-paid" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[10%]"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bank-summary-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Grouped Table -->
+            <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Purchases</h2>
+            <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-hidden">
+                <table class="w-full table-fixed">
+                    <thead>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400">
+                            <th class="px-4 py-3 w-[30%] cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[30%] cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
+                            <th class="px-4 py-3 text-right w-[30%] cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
+                            <th class="px-4 py-3 w-[10%]"></th>
                         </tr>
                     </thead>
                     <tbody id="monthly-table-body"></tbody>
@@ -266,6 +285,31 @@
             <div class="flex gap-3">
                 <button onclick="closeModal('modal-delete')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
                 <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors text-sm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Monthly Modal -->
+    <div id="modal-soa" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h2 class="text-lg font-bold mb-4">Bank Statement</h2>
+            <input type="hidden" id="soa-bank-name">
+            <div class="mb-4">
+                <span id="soa-bank-label" class="text-sm text-gray-400"></span>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Actual SOA Amount (₱)</label>
+                    <input type="number" id="soa-amount-input" step="0.01" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0.00">
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="soa-paid-input" class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
+                    <label for="soa-paid-input" class="text-sm text-gray-400">Paid</label>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeModal('modal-soa')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                <button onclick="saveSoaAmount()" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save</button>
             </div>
         </div>
     </div>
