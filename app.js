@@ -72,7 +72,28 @@ async function loadData() {
     if (settings.recurringEnabled) {
         await generateRecurringPurchases();
     }
+    // Check if all banks are paid for current month — if so, advance to next month
+    autoAdvanceIfAllPaid();
     renderMonthly();
+}
+
+function autoAdvanceIfAllPaid() {
+    const billableBanks = banks.filter(b => b.soaDate && b.soaDate > 0);
+    if (billableBanks.length === 0) return;
+
+    const allPaid = billableBanks.every(bank => {
+        const key = getBankMonthlyKey(bank.name, currentMonth, currentYear);
+        const data = bankMonthlyData[key] || {};
+        return data.paid === true;
+    });
+
+    if (allPaid) {
+        currentMonth += 1;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear += 1;
+        }
+    }
 }
 
 async function loadCategories() {
@@ -203,7 +224,23 @@ function renderBankSummary(monthPurchases) {
         return bsSortDirection === 'asc' ? cmp : -cmp;
     });
 
-    tbody.innerHTML = sortedBanks.map(bank => {
+    // Calculate totals for footer
+    let grandTotal = 0;
+    let grandSoa = 0;
+    let allHaveSoa = true;
+
+    sortedBanks.forEach(bank => {
+        const key = getBankMonthlyKey(bank.name, currentMonth, currentYear);
+        const data = bankMonthlyData[key] || {};
+        grandTotal += (bankTotals[bank.name] || 0);
+        if (data.soaAmount != null) {
+            grandSoa += data.soaAmount;
+        } else {
+            allHaveSoa = false;
+        }
+    });
+
+    let rowsHtml = sortedBanks.map(bank => {
         const key = getBankMonthlyKey(bank.name, currentMonth, currentYear);
         const data = bankMonthlyData[key] || {};
         const total = bankTotals[bank.name] || 0;
@@ -221,6 +258,18 @@ function renderBankSummary(monthPurchases) {
             </td>
         </tr>`;
     }).join('');
+
+    // Add total footer row
+    const soaDisplay = allHaveSoa ? `₱${formatNumber(grandSoa)}` : `₱${formatNumber(grandSoa)}*`;
+    rowsHtml += `<tr class="border-t border-gray-600 whitespace-nowrap bg-dark-800/50">
+        <td class="px-4 py-3 text-sm font-bold text-gray-300">Total</td>
+        <td class="px-4 py-3 text-sm font-bold">₱${formatNumber(grandTotal)}</td>
+        <td class="px-4 py-3 text-sm font-bold">${soaDisplay}</td>
+        <td class="px-4 py-3 text-sm"></td>
+        <td class="px-4 py-3"></td>
+    </tr>`;
+
+    tbody.innerHTML = rowsHtml;
 
     updateBsSortIcons();
 }
