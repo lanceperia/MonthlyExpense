@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monthly Expense Tracker</title>
+    <link rel="icon" type="image/x-icon" href="favicon_io/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -63,6 +67,7 @@
                     <button id="tab-monthly" onclick="switchTab('monthly')" class="px-4 py-2 text-sm font-medium border-b-2 border-accent text-accent">Monthly</button>
                     <button id="tab-summary" onclick="switchTab('summary')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Summary</button>
                     <button id="tab-recurring" onclick="switchTab('recurring')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Recurring</button>
+                    <button id="tab-loans" onclick="switchTab('loans')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">Loans</button>
                 </div>
             </div>
         </header>
@@ -181,6 +186,44 @@
                 <div id="recurring-empty" class="hidden text-center py-12 text-gray-500">No recurring expenses configured</div>
             </div>
         </div>
+
+        <!-- Loans View -->
+        <div id="view-loans" class="max-w-6xl mx-auto px-4 py-6 hidden">
+            <!-- Loan Summary Bar -->
+            <div id="loan-summary-bar" class="mb-6"></div>
+
+            <!-- Month Nav + Add Button -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-2 justify-center sm:justify-start">
+                    <button onclick="changeLoanMonth(-1)" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span id="loan-month-label" class="text-lg font-semibold min-w-[160px] text-center"></span>
+                    <button onclick="changeLoanMonth(1)" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <button onclick="goToLoanToday()" class="ml-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors">Today</button>
+                </div>
+                <button onclick="openAddLoan()" class="bg-accent hover:bg-accent-dark text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">+ Add Loan</button>
+            </div>
+
+            <!-- Loans Table -->
+            <div class="bg-dark-700 rounded-xl overflow-x-auto">
+                <table class="w-full min-w-[500px]">
+                    <thead>
+                        <tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
+                            <th class="px-4 py-3">Bank</th>
+                            <th class="px-4 py-3">Loan Name</th>
+                            <th class="px-4 py-3">Amount</th>
+                            <th class="px-4 py-3">Paid</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="loans-table-body"></tbody>
+                </table>
+                <div id="loans-empty" class="hidden text-center py-12 text-gray-500">No loans for this month</div>
+            </div>
+        </div>
     </div>
 
     <!-- Add/Edit Purchase Modal -->
@@ -224,58 +267,73 @@
 
     <!-- Settings Modal -->
     <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
+        <div class="bg-dark-700 rounded-2xl w-full max-w-lg mx-4 shadow-2xl flex flex-col h-[520px]">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 pt-5 pb-0 flex-shrink-0">
                 <h2 class="text-lg font-bold">Settings</h2>
                 <button onclick="closeModal('modal-settings')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
 
-            <!-- Features Section -->
-            <div class="mb-6">
-                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Features</h3>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="settings-recurring-enabled" class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
-                    <label for="settings-recurring-enabled" class="text-sm text-gray-400">Enable Recurring Expenses</label>
-                </div>
+            <!-- Settings Tabs -->
+            <div class="flex border-b border-gray-700/50 px-6 mt-4 flex-shrink-0">
+                <button id="stab-features" onclick="switchSettingsTab('features')" class="settings-tab px-3 py-2 text-sm font-medium border-b-2 border-accent text-accent -mb-px">Features</button>
+                <button id="stab-budget" onclick="switchSettingsTab('budget')" class="settings-tab px-3 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 -mb-px">Budget</button>
+                <button id="stab-categories" onclick="switchSettingsTab('categories')" class="settings-tab px-3 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 -mb-px">Categories</button>
+                <button id="stab-banks" onclick="switchSettingsTab('banks')" class="settings-tab px-3 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 -mb-px">Banks</button>
             </div>
 
-            <!-- Budget Section -->
-            <div class="mb-6">
-                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Budget</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Default Monthly Budget (₱)</label>
-                        <input type="number" id="settings-default-budget" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0">
+            <!-- Tab Content -->
+            <div class="overflow-y-auto flex-1 px-6 py-5">
+                <!-- Features Tab -->
+                <div id="stab-content-features">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="settings-recurring-enabled" class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
+                            <label for="settings-recurring-enabled" class="text-sm text-gray-400">Enable Recurring Tab</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="settings-loans-enabled" class="w-4 h-4 rounded border-gray-600 bg-dark-800 text-accent focus:ring-accent">
+                            <label for="settings-loans-enabled" class="text-sm text-gray-400">Enable Loans Tab</label>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Override for <span id="settings-override-month-label"></span> (₱) — leave blank to use default</label>
-                        <input type="number" id="settings-month-override" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Use default">
+                </div>
+
+                <!-- Budget Tab -->
+                <div id="stab-content-budget" class="hidden">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Default Monthly Budget (₱)</label>
+                            <input type="number" id="settings-default-budget" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Override for <span id="settings-override-month-label"></span> (₱) — leave blank to use default</label>
+                            <input type="number" id="settings-month-override" min="0" step="100" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Use default">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Categories Section -->
-            <div class="mb-6">
-                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Categories</h3>
-                <div id="categories-list" class="space-y-2 mb-3"></div>
-                <div class="flex gap-2">
-                    <input type="text" id="new-category-input" class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="New category">
-                    <button onclick="addCategory()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors">Add</button>
+                <!-- Categories Tab -->
+                <div id="stab-content-categories" class="hidden">
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new-category-input" class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="New category">
+                        <button onclick="addCategory()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors">Add</button>
+                    </div>
+                    <div id="categories-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Banks Tab -->
+                <div id="stab-content-banks" class="hidden">
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new-bank-name" class="flex-1 min-w-0 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Bank name">
+                        <input type="number" id="new-bank-soa" min="0" max="28" class="w-16 bg-dark-800 border border-gray-600 rounded-lg px-2 py-2 text-sm" placeholder="SOA">
+                        <button onclick="addBank()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap">Add</button>
+                    </div>
+                    <div id="banks-list" class="space-y-2"></div>
                 </div>
             </div>
 
-            <!-- Banks Section -->
-            <div class="mb-6">
-                <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Banks</h3>
-                <div id="banks-list" class="space-y-2 mb-3"></div>
-                <div class="flex gap-2">
-                    <input type="text" id="new-bank-name" class="flex-1 min-w-0 bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Bank name">
-                    <input type="number" id="new-bank-soa" min="0" max="28" class="w-16 bg-dark-800 border border-gray-600 rounded-lg px-2 py-2 text-sm" placeholder="SOA">
-                    <button onclick="addBank()" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap">Add</button>
-                </div>
-            </div>
-
-            <div class="flex gap-3">
+            <!-- Footer -->
+            <div class="flex gap-3 px-6 pb-5 pt-4 border-t border-gray-700/50 flex-shrink-0">
                 <button onclick="closeModal('modal-settings')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Close</button>
                 <button onclick="saveSettings()" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save Settings</button>
             </div>
@@ -382,6 +440,64 @@
             <div class="flex gap-3">
                 <button onclick="closeModal('modal-delete-recurring')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
                 <button onclick="confirmDeleteRecurring()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors text-sm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Loan Modal -->
+    <div id="modal-loan" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-loan-title" class="text-lg font-bold">Add Loan</h2>
+                <button onclick="closeModal('modal-loan')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <form id="loan-form" onsubmit="saveLoan(event)">
+                <input type="hidden" id="loan-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bank</label>
+                        <input type="text" id="loan-bank" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="e.g. SSS, Pag-IBIG, BDO">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Loan Name</label>
+                        <input type="text" id="loan-name" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="e.g. Car Loan, Housing Loan">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Monthly Amount (₱)</label>
+                        <input type="number" id="loan-amount" required step="0.01" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="0.00">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Start Month</label>
+                            <input type="month" id="loan-start" required class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm cursor-pointer" onclick="this.showPicker()" oninput="updateLoanEndPreview()">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Duration (months)</label>
+                            <input type="number" id="loan-duration" required min="1" class="w-full bg-dark-800 border border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="e.g. 36" oninput="updateLoanEndPreview()">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500">End month: <span id="loan-end-preview" class="text-gray-300">—</span></p>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-loan')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent hover:bg-accent-dark text-white py-2 rounded-lg transition-colors text-sm">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Loan Confirmation Modal -->
+    <div id="modal-delete-loan" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-dark-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-lg font-bold">Delete Loan</h2>
+                <button onclick="closeModal('modal-delete-loan')" class="text-gray-400 hover:text-gray-200 p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <p class="text-gray-400 text-sm mb-6">Are you sure you want to delete this loan? This cannot be undone.</p>
+            <input type="hidden" id="delete-loan-id">
+            <div class="flex gap-3">
+                <button onclick="closeModal('modal-delete-loan')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                <button onclick="confirmDeleteLoan()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors text-sm">Delete</button>
             </div>
         </div>
     </div>

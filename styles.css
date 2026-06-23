@@ -22,3 +22,29 @@ body {
 .transaction-details.open {
     display: table-row;
 }
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+#modal-settings .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+}
+#modal-settings .overflow-y-auto::-webkit-scrollbar {
+    width: 4px;
+}
+#modal-settings .overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+#modal-settings .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 9999px;
+}
+#modal-settings .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+}

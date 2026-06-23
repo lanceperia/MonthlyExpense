@@ -27,6 +27,12 @@ let pieChart = null;
 let sortColumn = 'total';
 let sortDirection = 'desc';
 
+// Loans state
+let loans = [];
+let loanPayments = {};
+let loanMonth = new Date().getMonth();
+let loanYear = new Date().getFullYear();
+
 const DEFAULT_CATEGORIES = ['Medicine', 'Online Shop', 'Food Delivery', 'Gas', 'Toll', 'Dine In', 'Haircut', 'Grocery', 'Insurance', 'Entertainment', 'PMS', 'Payment', 'Others'];
 const DEFAULT_BANKS = [
     { name: 'BPI', soaDate: 15 },
@@ -67,8 +73,9 @@ function userDoc(collection) {
 }
 
 async function loadData() {
-    await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases(), loadRecurring(), loadRecurringLog(), loadBankMonthly()]);
+    await Promise.all([loadCategories(), loadBanks(), loadSettings(), loadPurchases(), loadRecurring(), loadRecurringLog(), loadBankMonthly(), loadLoans(), loadLoanPayments()]);
     updateRecurringTabVisibility();
+    updateLoansTabVisibility();
     if (settings.recurringEnabled) {
         await generateRecurringPurchases();
     }
@@ -595,31 +602,33 @@ function updateRecurringTabVisibility() {
     }
 }
 
+function updateLoansTabVisibility() {
+    const tabBtn = document.getElementById('tab-loans');
+    if (settings.loansEnabled) {
+        tabBtn.classList.remove('hidden');
+    } else {
+        tabBtn.classList.add('hidden');
+        if (!document.getElementById('view-loans').classList.contains('hidden')) {
+            switchTab('monthly');
+        }
+    }
+}
+
 // Tab switching
 function switchTab(tab) {
-    document.getElementById('view-monthly').classList.toggle('hidden', tab !== 'monthly');
-    document.getElementById('view-summary').classList.toggle('hidden', tab !== 'summary');
-    document.getElementById('view-recurring').classList.toggle('hidden', tab !== 'recurring');
-    document.getElementById('tab-monthly').classList.toggle('border-accent', tab === 'monthly');
-    document.getElementById('tab-monthly').classList.toggle('text-accent', tab === 'monthly');
-    document.getElementById('tab-monthly').classList.toggle('border-transparent', tab !== 'monthly');
-    document.getElementById('tab-monthly').classList.toggle('text-gray-400', tab !== 'monthly');
-    document.getElementById('tab-summary').classList.toggle('border-accent', tab === 'summary');
-    document.getElementById('tab-summary').classList.toggle('text-accent', tab === 'summary');
-    document.getElementById('tab-summary').classList.toggle('border-transparent', tab !== 'summary');
-    document.getElementById('tab-summary').classList.toggle('text-gray-400', tab !== 'summary');
-    document.getElementById('tab-recurring').classList.toggle('border-accent', tab === 'recurring');
-    document.getElementById('tab-recurring').classList.toggle('text-accent', tab === 'recurring');
-    document.getElementById('tab-recurring').classList.toggle('border-transparent', tab !== 'recurring');
-    document.getElementById('tab-recurring').classList.toggle('text-gray-400', tab !== 'recurring');
+    ['monthly', 'summary', 'recurring', 'loans'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', tab !== t);
+        const btn = document.getElementById(`tab-${t}`);
+        if (!btn) return;
+        btn.classList.toggle('border-accent', tab === t);
+        btn.classList.toggle('text-accent', tab === t);
+        btn.classList.toggle('border-transparent', tab !== t);
+        btn.classList.toggle('text-gray-400', tab !== t);
+    });
 
-    if (tab === 'summary') {
-        populateYearDropdown();
-        renderSummary();
-    }
-    if (tab === 'recurring') {
-        renderRecurring();
-    }
+    if (tab === 'summary') { populateYearDropdown(); renderSummary(); }
+    if (tab === 'recurring') { renderRecurring(); }
+    if (tab === 'loans') { renderLoans(); }
 }
 
 // Month navigation
@@ -720,8 +729,23 @@ async function confirmDelete() {
 }
 
 // Settings
-function openSettings() {
+let activeSettingsTab = 'features';
+
+function switchSettingsTab(tab) {
+    activeSettingsTab = tab;
+    ['features', 'budget', 'categories', 'banks'].forEach(t => {
+        document.getElementById(`stab-content-${t}`).classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById(`stab-${t}`);
+        btn.classList.toggle('border-accent', t === tab);
+        btn.classList.toggle('text-accent', t === tab);
+        btn.classList.toggle('border-transparent', t !== tab);
+        btn.classList.toggle('text-gray-400', t !== tab);
+    });
+}
+
+function openSettings(tab) {
     document.getElementById('settings-recurring-enabled').checked = settings.recurringEnabled || false;
+    document.getElementById('settings-loans-enabled').checked = settings.loansEnabled || false;
     document.getElementById('settings-default-budget').value = settings.defaultBudget || '';
     const monthKey = `${currentYear}-${currentMonth}`;
     document.getElementById('settings-override-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
@@ -747,6 +771,7 @@ function openSettings() {
         </div>`;
     }).join('');
 
+    switchSettingsTab(tab || activeSettingsTab);
     openModal('modal-settings');
 }
 
@@ -758,6 +783,7 @@ async function saveSettings() {
 
     settings.defaultBudget = defaultBudget;
     settings.recurringEnabled = recurringEnabled;
+    settings.loansEnabled = document.getElementById('settings-loans-enabled').checked;
     if (!settings.monthOverrides) settings.monthOverrides = {};
     if (overrideVal !== '') {
         settings.monthOverrides[monthKey] = parseFloat(overrideVal);
@@ -768,6 +794,7 @@ async function saveSettings() {
     await db.collection('users').doc(currentUser.uid).set({ settings }, { merge: true });
     closeModal('modal-settings');
     updateRecurringTabVisibility();
+    updateLoansTabVisibility();
     renderMonthly();
 }
 
@@ -783,14 +810,14 @@ async function addCategory() {
         return a.localeCompare(b);
     });
     input.value = '';
-    openSettings();
+    openSettings('categories');
 }
 
 async function removeCategory(name) {
     const snap = await userDoc('categories').where('name', '==', name).get();
     snap.forEach(doc => doc.ref.delete());
     categories = categories.filter(c => c !== name);
-    openSettings();
+    openSettings('categories');
 }
 
 async function addBank() {
@@ -804,14 +831,14 @@ async function addBank() {
     banks.sort((a, b) => a.name.localeCompare(b.name));
     nameInput.value = '';
     soaInput.value = '';
-    openSettings();
+    openSettings('banks');
 }
 
 async function removeBank(name) {
     const snap = await userDoc('banks').where('name', '==', name).get();
     snap.forEach(doc => doc.ref.delete());
     banks = banks.filter(b => (typeof b === 'object' ? b.name : b) !== name);
-    openSettings();
+    openSettings('banks');
 }
 
 // Recurring Templates
@@ -1019,6 +1046,202 @@ function generateColors(count) {
     const colors = [];
     for (let i = 0; i < count; i++) colors.push(palette[i % palette.length]);
     return colors;
+}
+
+// ─── Loans ───────────────────────────────────────────────────────────────────
+
+async function loadLoans() {
+    const snap = await userDoc('loans').get();
+    loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function loadLoanPayments() {
+    const snap = await userDoc('loanPayments').get();
+    loanPayments = {};
+    snap.docs.forEach(d => { loanPayments[d.id] = d.data(); });
+}
+
+function getLoanPaymentKey(loanId, month, year) {
+    return `${loanId}-${year}-${String(month).padStart(2, '0')}`;
+}
+
+function loanActiveInMonth(loan, month, year) {
+    const ym = year * 12 + month;
+    const [sy, sm] = loan.startMonth.split('-').map(Number);
+    const start = sy * 12 + (sm - 1);
+    const end = start + loan.duration - 1;
+    return ym >= start && ym <= end;
+}
+
+function loansForMonth(month, year) {
+    return loans.filter(l => loanActiveInMonth(l, month, year));
+}
+
+function renderLoanSummaryBar() {
+    const bar = document.getElementById('loan-summary-bar');
+    const today = new Date();
+    const nowYM = today.getFullYear() * 12 + today.getMonth();
+
+    const active = loans.filter(l => {
+        const [sy, sm] = l.startMonth.split('-').map(Number);
+        const start = sy * 12 + (sm - 1);
+        const end = start + l.duration - 1;
+        return nowYM <= end;
+    });
+
+    if (active.length === 0) {
+        bar.innerHTML = '';
+        return;
+    }
+
+    const cards = active.map(l => {
+        const paidCount = Object.keys(loanPayments).filter(k => k.startsWith(`${l.id}-`) && loanPayments[k]?.paid).length;
+        const monthsLeft = Math.max(0, l.duration - paidCount);
+        const remaining = monthsLeft * parseFloat(l.amount);
+        return `<div class="bg-dark-700 rounded-xl px-4 py-3 flex flex-col gap-1 flex-shrink-0 w-[72vw] sm:w-auto snap-start">
+            <div class="text-xs text-gray-400 truncate">${l.bank} — ${l.name}</div>
+            <div class="text-sm font-semibold">₱${formatNumber(parseFloat(l.amount))}<span class="text-gray-500 font-normal">/mo</span></div>
+            <div class="text-xs text-gray-400">${monthsLeft} month${monthsLeft !== 1 ? 's' : ''} left &nbsp;·&nbsp; <span class="text-gray-200">₱${formatNumber(remaining)}</span> remaining</div>
+        </div>`;
+    }).join('');
+
+    bar.innerHTML = `<h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Active Loans</h2>
+        <div class="flex gap-3 mb-2 overflow-x-auto snap-x snap-mandatory pb-1 scrollbar-hide sm:flex-wrap sm:overflow-visible">${cards}</div>`;
+}
+
+function renderLoans() {
+    document.getElementById('loan-month-label').textContent = `${MONTH_NAMES[loanMonth]} ${loanYear}`;
+    renderLoanSummaryBar();
+
+    const monthLoans = loansForMonth(loanMonth, loanYear);
+    const tbody = document.getElementById('loans-table-body');
+    const emptyMsg = document.getElementById('loans-empty');
+
+    if (monthLoans.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.classList.remove('hidden');
+        return;
+    }
+    emptyMsg.classList.add('hidden');
+
+    const editIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>`;
+    const delIcon = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+
+    tbody.innerHTML = monthLoans.map(l => {
+        const key = getLoanPaymentKey(l.id, loanMonth, loanYear);
+        const paid = loanPayments[key]?.paid || false;
+        const paidBtn = paid
+            ? `<button onclick="toggleLoanPaid('${l.id}')" class="px-3 py-1 rounded-lg text-xs font-medium bg-green-900/40 text-green-400 hover:bg-green-900/60 transition-colors">Paid</button>`
+            : `<button onclick="toggleLoanPaid('${l.id}')" class="px-3 py-1 rounded-lg text-xs font-medium bg-gray-700 text-gray-400 hover:bg-gray-600 transition-colors">Unpaid</button>`;
+        return `<tr class="border-b border-gray-700/30 whitespace-nowrap">
+            <td class="px-4 py-3 text-sm font-medium">${l.bank}</td>
+            <td class="px-4 py-3 text-sm">${l.name}</td>
+            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(parseFloat(l.amount))}</td>
+            <td class="px-4 py-3">${paidBtn}</td>
+            <td class="px-4 py-3">
+                ${!paid ? `<div class="flex items-center justify-end gap-1">
+                    <button onclick="editLoan('${l.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                    <button onclick="deleteLoan('${l.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                </div>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function changeLoanMonth(delta) {
+    loanMonth += delta;
+    if (loanMonth > 11) { loanMonth = 0; loanYear++; }
+    if (loanMonth < 0) { loanMonth = 11; loanYear--; }
+    renderLoans();
+}
+
+function goToLoanToday() {
+    loanMonth = new Date().getMonth();
+    loanYear = new Date().getFullYear();
+    renderLoans();
+}
+
+async function toggleLoanPaid(loanId) {
+    const key = getLoanPaymentKey(loanId, loanMonth, loanYear);
+    const current = loanPayments[key]?.paid || false;
+    loanPayments[key] = { paid: !current };
+    await userDoc('loanPayments').doc(key).set({ paid: !current });
+    renderLoans();
+}
+
+function updateLoanEndPreview() {
+    const start = document.getElementById('loan-start').value;
+    const duration = parseInt(document.getElementById('loan-duration').value);
+    const preview = document.getElementById('loan-end-preview');
+    if (!start || !duration || duration < 1) { preview.textContent = '—'; return; }
+    const [y, m] = start.split('-').map(Number);
+    const endYM = y * 12 + (m - 1) + duration - 1;
+    const endYear = Math.floor(endYM / 12);
+    const endMonth = endYM % 12;
+    preview.textContent = `${MONTH_NAMES[endMonth]} ${endYear}`;
+}
+
+function openAddLoan() {
+    document.getElementById('modal-loan-title').textContent = 'Add Loan';
+    document.getElementById('loan-id').value = '';
+    document.getElementById('loan-form').reset();
+    document.getElementById('loan-end-preview').textContent = '—';
+    const today = new Date();
+    document.getElementById('loan-start').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    openModal('modal-loan');
+}
+
+function editLoan(id) {
+    const loan = loans.find(l => l.id === id);
+    if (!loan) return;
+    document.getElementById('modal-loan-title').textContent = 'Edit Loan';
+    document.getElementById('loan-id').value = id;
+    document.getElementById('loan-bank').value = loan.bank;
+    document.getElementById('loan-name').value = loan.name;
+    document.getElementById('loan-amount').value = loan.amount;
+    document.getElementById('loan-start').value = loan.startMonth;
+    document.getElementById('loan-duration').value = loan.duration;
+    updateLoanEndPreview();
+    openModal('modal-loan');
+}
+
+async function saveLoan(e) {
+    e.preventDefault();
+    const id = document.getElementById('loan-id').value;
+    const data = {
+        bank: document.getElementById('loan-bank').value.trim(),
+        name: document.getElementById('loan-name').value.trim(),
+        amount: parseFloat(document.getElementById('loan-amount').value),
+        startMonth: document.getElementById('loan-start').value,
+        duration: parseInt(document.getElementById('loan-duration').value)
+    };
+    if (id) {
+        await userDoc('loans').doc(id).update(data);
+        const idx = loans.findIndex(l => l.id === id);
+        if (idx !== -1) loans[idx] = { id, ...data };
+    } else {
+        const ref = await userDoc('loans').add(data);
+        loans.push({ id: ref.id, ...data });
+    }
+    closeModal('modal-loan');
+    renderLoans();
+}
+
+function deleteLoan(id) {
+    document.getElementById('delete-loan-id').value = id;
+    openModal('modal-delete-loan');
+}
+
+async function confirmDeleteLoan() {
+    const id = document.getElementById('delete-loan-id').value;
+    await userDoc('loans').doc(id).delete();
+    loans = loans.filter(l => l.id !== id);
+    // clean up payment records for this loan
+    const keysToDelete = Object.keys(loanPayments).filter(k => k.startsWith(`${id}-`));
+    await Promise.all(keysToDelete.map(k => userDoc('loanPayments').doc(k).delete()));
+    keysToDelete.forEach(k => delete loanPayments[k]);
+    closeModal('modal-delete-loan');
+    renderLoans();
 }
 
 // Close modals on backdrop click
