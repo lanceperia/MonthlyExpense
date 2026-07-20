@@ -240,10 +240,12 @@ function renderBankSummary(monthPurchases) {
         const key = getBankMonthlyKey(bank.name, currentMonth, currentYear);
         const data = bankMonthlyData[key] || {};
         grandTotal += (bankTotals[bank.name] || 0);
-        if (data.soaAmount != null) {
-            grandSoa += data.soaAmount;
-        } else {
-            allHaveSoa = false;
+        if (!data.paid) {
+            if (data.soaAmount != null) {
+                grandSoa += data.soaAmount;
+            } else {
+                allHaveSoa = false;
+            }
         }
     });
 
