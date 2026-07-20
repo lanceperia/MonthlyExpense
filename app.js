@@ -274,9 +274,9 @@ function renderBankSummary(monthPurchases) {
         <td class="px-4 py-3 text-sm font-bold text-gray-300">Total</td>
         <td class="px-4 py-3 text-sm font-bold">₱${formatNumber(grandTotal)}</td>
         <td class="px-4 py-3 text-sm font-bold">
-            <span class="relative group cursor-help">
+            <span class="relative group cursor-help" onclick="this.classList.toggle('active')">
                 ${soaDisplay}
-                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[180px] rounded bg-gray-800 px-2 py-1 text-xs text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">Unpaid SOA total only</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[180px] rounded bg-gray-800 px-2 py-1 text-xs text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 group-[.active]:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">Unpaid SOA total only</span>
             </span>
         </td>
         <td class="px-4 py-3 text-sm"></td>
