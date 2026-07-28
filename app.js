@@ -258,19 +258,20 @@ function renderBankSummary(monthPurchases) {
         const paidLabel = paid ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-500">No</span>';
 
         return `<tr class="border-b border-gray-700/30 whitespace-nowrap">
+            <td class="px-4 py-3 w-10">
+                <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+            </td>
             <td class="px-4 py-3 text-sm font-medium">${bank.name}</td>
             <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(total)}</td>
             <td class="px-4 py-3 text-sm">${soaAmount}</td>
             <td class="px-4 py-3 text-sm">${paidLabel}</td>
-            <td class="px-4 py-3 w-10">
-                <button onclick="openSoaModal('${bank.name}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
-            </td>
         </tr>`;
     }).join('');
 
     // Add total footer row
     const soaDisplay = allHaveSoa ? `₱${formatNumber(grandSoa)}` : `₱${formatNumber(grandSoa)}*`;
     rowsHtml += `<tr class="border-t border-gray-600 whitespace-nowrap bg-dark-800/50">
+        <td class="px-4 py-3"></td>
         <td class="px-4 py-3 text-sm font-bold text-gray-300">Total</td>
         <td class="px-4 py-3 text-sm font-bold">₱${formatNumber(grandTotal)}</td>
         <td class="px-4 py-3 text-sm font-bold">
@@ -280,7 +281,6 @@ function renderBankSummary(monthPurchases) {
             </span>
         </td>
         <td class="px-4 py-3 text-sm"></td>
-        <td class="px-4 py-3"></td>
     </tr>`;
 
     tbody.innerHTML = rowsHtml;
@@ -465,17 +465,17 @@ function renderMonthly() {
 
         const hasMultiple = group.items.length > 1;
         html += `<tr class="${hasMultiple ? 'expandable-row' : ''} border-b border-gray-700/30 whitespace-nowrap" ${hasMultiple ? `onclick="toggleExpand(${idx})"` : ''}>
-            <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
-            <td class="px-4 py-3 text-sm">${categoryLabel}</td>
-            <td class="px-4 py-3 text-sm font-semibold">${amountDisplay}</td>
             <td class="px-4 py-3 w-10">
                 ${!hasMultiple ? `
-                    <div class="flex items-center justify-end gap-1">
+                    <div class="flex items-center gap-1">
                         <button onclick="event.stopPropagation(); editPurchase('${group.items[0].id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
                         <button onclick="event.stopPropagation(); deletePurchase('${group.items[0].id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
                     </div>
                 ` : `<svg class="w-4 h-4 text-gray-500 transition-transform expand-icon-${idx}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`}
             </td>
+            <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
+            <td class="px-4 py-3 text-sm">${categoryLabel}</td>
+            <td class="px-4 py-3 text-sm font-semibold">${amountDisplay}</td>
         </tr>`;
         if (hasMultiple) {
             html += group.items.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount)).map(item => {
@@ -483,15 +483,15 @@ function renderMonthly() {
                 const itemAmount = itemIsPayment ? `<span class="text-red-400">(₱${formatNumber(parseFloat(item.amount))})</span>` : `₱${formatNumber(parseFloat(item.amount))}`;
                 return `
                 <tr class="transaction-details details-${idx} bg-dark-800/50 border-b border-gray-700/20 text-sm">
-                    <td class="px-4 py-2 pl-8 text-gray-400">${formatDate(item.date)}</td>
-                    <td class="px-4 py-2 text-gray-400">${item.others || item.category}</td>
-                    <td class="px-4 py-2 font-medium">${itemAmount}</td>
                     <td class="px-4 py-2">
                         <div class="flex items-center gap-1">
                             <button onclick="event.stopPropagation(); editPurchase('${item.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
                             <button onclick="event.stopPropagation(); deletePurchase('${item.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
                         </div>
                     </td>
+                    <td class="px-4 py-2 pl-8 text-gray-400">${formatDate(item.date)}</td>
+                    <td class="px-4 py-2 text-gray-400">${item.others || item.category}</td>
+                    <td class="px-4 py-2 font-medium">${itemAmount}</td>
                 </tr>`;
             }).join('');
         }
@@ -1012,6 +1012,12 @@ function renderRecurring() {
 
     tbody.innerHTML = sorted.map(t => `
         <tr class="border-b border-gray-700/30 whitespace-nowrap">
+            <td class="px-4 py-3">
+                <div class="flex items-center gap-1">
+                    <button onclick="editRecurring('${t.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
+                    <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
+                </div>
+            </td>
             <td class="px-4 py-3 text-sm font-medium">${t.bank}</td>
             <td class="px-4 py-3 text-sm">${t.category}</td>
             <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(t.amount)}</td>
@@ -1019,12 +1025,6 @@ function renderRecurring() {
             <td class="px-4 py-3 text-sm">${t.endDate || '—'}</td>
             <td class="px-4 py-3">
                 <button onclick="toggleRecurringActive('${t.id}')" class="text-sm ${t.active ? 'text-green-400' : 'text-gray-500'}">${t.active ? 'Active' : 'Paused'}</button>
-            </td>
-            <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
-                    <button onclick="editRecurring('${t.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
-                    <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
-                </div>
             </td>
         </tr>
     `).join('');
@@ -1141,16 +1141,16 @@ function renderLoans() {
             ? `<button onclick="toggleLoanPaid('${l.id}')" class="px-3 py-1 rounded-lg text-xs font-medium bg-green-900/40 text-green-400 hover:bg-green-900/60 transition-colors">Paid</button>`
             : `<button onclick="toggleLoanPaid('${l.id}')" class="px-3 py-1 rounded-lg text-xs font-medium bg-gray-700 text-gray-400 hover:bg-gray-600 transition-colors">Unpaid</button>`;
         return `<tr class="border-b border-gray-700/30 whitespace-nowrap">
-            <td class="px-4 py-3 text-sm font-medium">${l.bank}</td>
-            <td class="px-4 py-3 text-sm">${l.name}</td>
-            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(parseFloat(l.amount))}</td>
-            <td class="px-4 py-3">${paidBtn}</td>
             <td class="px-4 py-3">
-                ${!paid ? `<div class="flex items-center justify-end gap-1">
+                ${!paid ? `<div class="flex items-center gap-1">
                     <button onclick="editLoan('${l.id}')" class="text-accent hover:text-accent-light p-1">${editIcon}</button>
                     <button onclick="deleteLoan('${l.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
                 </div>` : ''}
             </td>
+            <td class="px-4 py-3 text-sm font-medium">${l.bank}</td>
+            <td class="px-4 py-3 text-sm">${l.name}</td>
+            <td class="px-4 py-3 text-sm font-semibold">₱${formatNumber(parseFloat(l.amount))}</td>
+            <td class="px-4 py-3">${paidBtn}</td>
         </tr>`;
     }).join('');
 }
