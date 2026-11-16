@@ -404,9 +404,9 @@ function isHouseholdPurchase(purchase) {
 }
 
 function getHouseholdForMonth(month, year) {
-    const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const monthPurchases = getPurchasesForMonth(month, year);
     return Object.entries(HOUSEHOLD_BUDGETS).map(([category, budget]) => {
-        const items = purchases.filter(p => p.category === category && p.date.startsWith(prefix))
+        const items = monthPurchases.filter(p => p.category === category)
             .sort((a, b) => a.date.localeCompare(b.date));
         const spent = items.reduce((total, p) => total + Number(p.amount), 0);
         // Groceries retain their allocation; paid utilities release unused funds.
@@ -639,7 +639,7 @@ function renderSummary() {
     const year = parseInt(document.getElementById('summary-year').value);
     const yearPurchases = purchases.filter(p => {
         if (p.category === 'Payment') return false;
-        const expenseYear = isHouseholdPurchase(p) ? Number(p.date.slice(0, 4)) : getBillingMonth(p.date, p.bank).year;
+        const expenseYear = getBillingMonth(p.date, p.bank).year;
         return expenseYear === year;
     });
 
@@ -804,9 +804,9 @@ async function savePurchase(e) {
     }
 
     if (isHouseholdPurchase(data)) {
-        const [year, month] = data.date.split('-').map(Number);
+        const { year, month } = getBillingMonth(data.date, data.bank);
         currentYear = year;
-        currentMonth = month - 1;
+        currentMonth = month;
     }
     closeModal('modal-purchase');
     renderMonthly();
