@@ -403,21 +403,38 @@ function isHouseholdPurchase(purchase) {
     return Object.hasOwn(HOUSEHOLD_BUDGETS, purchase.category);
 }
 
+
 function getHouseholdForMonth(month, year) {
     const monthPurchases = getPurchasesForMonth(month, year);
-    const today = new Date();
-    const completedMonth = year * 12 + month < today.getFullYear() * 12 + today.getMonth();
-    return Object.entries(HOUSEHOLD_BUDGETS).map(([category, budget]) => {
-        const items = monthPurchases.filter(p => p.category === category)
-            .sort((a, b) => a.date.localeCompare(b.date));
-        const spent = items.reduce((total, p) => total + Number(p.amount), 0);
-        // Release unused grocery funds after the month ends; keep current/future allocations.
-        const commitment = category === 'Grocery'
-            ? (completedMonth ? spent : Math.max(budget, spent))
-            : items.length ? spent : budget;
-        return { category, budget, spent, commitment, items };
-    });
+
+    return Object.entries(HOUSEHOLD_BUDGETS).map(
+        ([category, budget]) => {
+            const items = monthPurchases
+                .filter(p => p.category === category)
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            const spent = items.reduce(
+                (total, p) => total + Number(p.amount),
+                0
+            );
+
+            // Grocery counts only actual purchases.
+            // Utilities reserve their budget until paid.
+            const commitment = category === 'Grocery'
+                ? spent
+                : (items.length ? spent : budget);
+
+            return {
+                category,
+                budget,
+                spent,
+                commitment,
+                items
+            };
+        }
+    );
 }
+
 
 function getMonthlyCommitment(otherPurchases, household) {
     // Card repayments are transfers, not a second expense.
@@ -523,9 +540,12 @@ function renderMonthly() {
     const household = getHouseholdForMonth(currentMonth, currentYear);
     const monthKey = currentYear + '-' + currentMonth;
     const budget = Number(settings.monthOverrides?.[monthKey] ?? settings.defaultBudget ?? 0);
-    const available = budget - getMonthlyCommitment(monthPurchases, household);
-    const actualSpent = billingPurchases.filter(p => p.category !== 'Payment')
-        .reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalCommitted = getMonthlyCommitment(
+        monthPurchases,
+        household
+    );
+    const available = budget - totalCommitted;
+    const actualSpent = totalCommitted;
     document.getElementById('budget-amount').textContent = '₱' + formatNumber(budget);
     document.getElementById('spent-amount').textContent = '₱' + formatNumber(actualSpent);
     document.getElementById('remaining-label').textContent = available < 0 ? 'Overspent:' : 'Remaining:';
