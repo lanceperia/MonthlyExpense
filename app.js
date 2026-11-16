@@ -405,12 +405,16 @@ function isHouseholdPurchase(purchase) {
 
 function getHouseholdForMonth(month, year) {
     const monthPurchases = getPurchasesForMonth(month, year);
+    const today = new Date();
+    const completedMonth = year * 12 + month < today.getFullYear() * 12 + today.getMonth();
     return Object.entries(HOUSEHOLD_BUDGETS).map(([category, budget]) => {
         const items = monthPurchases.filter(p => p.category === category)
             .sort((a, b) => a.date.localeCompare(b.date));
         const spent = items.reduce((total, p) => total + Number(p.amount), 0);
-        // Groceries retain their allocation; paid utilities release unused funds.
-        const commitment = category === 'Grocery' ? Math.max(budget, spent) : items.length ? spent : budget;
+        // Release unused grocery funds after the month ends; keep current/future allocations.
+        const commitment = category === 'Grocery'
+            ? (completedMonth ? spent : Math.max(budget, spent))
+            : items.length ? spent : budget;
         return { category, budget, spent, commitment, items };
     });
 }
