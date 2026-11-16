@@ -454,6 +454,9 @@ function renderHousehold(groups) {
         const row = document.createElement('tr');
         row.className = 'border-b border-gray-700/30 whitespace-nowrap';
         const actionCell = cell(row);
+        actionCell.classList.add('w-10');
+        const paymentBanks = [...new Set(group.items.map(item => item.bank))];
+        cell(row, paymentBanks.length > 1 ? 'Multiple banks' : (paymentBanks[0] || '—'));
         cell(row, group.category);
         cell(row, '₱' + formatNumber(group.budget));
         cell(row, group.items.length ? '₱' + formatNumber(group.spent) : '—');
@@ -475,37 +478,34 @@ function renderHousehold(groups) {
         if (group.items.length > 1) {
             const toggle = document.createElement('button');
             toggle.type = 'button';
-            toggle.className = 'text-accent p-1';
-            toggle.textContent = '▸';
+            toggle.className = 'text-gray-500 p-1';
+            toggle.innerHTML = '<svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
             toggle.setAttribute('aria-label', 'Expand ' + group.category + ' purchases');
             toggle.setAttribute('aria-expanded', 'false');
             actionCell.append(toggle);
-            const detail = document.createElement('tr');
-            detail.hidden = true;
-            const detailCell = cell(detail);
-            detailCell.colSpan = 5;
-            detailCell.className = 'p-0';
-            const table = document.createElement('table');
-            table.className = 'w-full bg-dark-800/50';
-            table.innerHTML = '<thead><tr class="text-left text-xs text-gray-400"><th class="px-4 py-2">Actions</th><th class="px-4 py-2">Bank</th><th class="px-4 py-2">Date</th><th class="px-4 py-2">Amount</th></tr></thead>';
-            const itemsBody = document.createElement('tbody');
+            row.classList.add('expandable-row');
+            const details = [];
             group.items.forEach(item => {
                 const child = document.createElement('tr');
-                child.className = 'border-b border-gray-700/20';
+                child.className = 'bg-dark-800/50 border-b border-gray-700/20 text-sm';
+                child.hidden = true;
                 cell(child).append(householdActions(item));
-                cell(child, item.bank);
-                cell(child, formatDate(item.date));
-                cell(child, '₱' + formatNumber(Number(item.amount)));
-                itemsBody.append(child);
+                cell(child, item.bank).className = 'px-4 py-2 text-gray-400';
+                cell(child, group.category).className = 'px-4 py-2 text-gray-400';
+                cell(child, formatDate(item.date)).className = 'px-4 py-2 text-gray-400';
+                cell(child, '₱' + formatNumber(Number(item.amount))).className = 'px-4 py-2 font-medium';
+                cell(child);
+                body.append(child);
+                details.push(child);
             });
-            table.append(itemsBody);
-            detailCell.append(table);
-            body.append(detail);
-            toggle.onclick = () => {
-                detail.hidden = !detail.hidden;
-                toggle.textContent = detail.hidden ? '▸' : '▾';
-                toggle.setAttribute('aria-expanded', String(!detail.hidden));
+            const toggleDetails = () => {
+                const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+                details.forEach(detail => { detail.hidden = !expanded; });
+                toggle.firstElementChild.style.transform = expanded ? 'rotate(180deg)' : '';
+                toggle.setAttribute('aria-expanded', String(expanded));
             };
+            row.onclick = toggleDetails;
+            toggle.onclick = event => { event.stopPropagation(); toggleDetails(); };
         }
     });
 }
