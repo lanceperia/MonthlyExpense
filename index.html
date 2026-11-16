@@ -19,8 +19,9 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: { 800: '#1a1a2e', 700: '#16213e', 600: '#0f3460', 500: '#1a1a3e' },
-                        accent: { DEFAULT: '#0ea5e9', light: '#38bdf8', dark: '#0284c7' }
+                        dark: { 800: '#111716', 700: '#1b2422', 600: '#293630', 500: '#202b26' },
+                        gray: { 100: '#ecf2ef', 200: '#d7e2dc', 300: '#c4d1c9', 400: '#a3b3ac', 500: '#8a9c92', 600: '#405047', 700: '#303c38', 800: '#202b26', 900: '#111716' },
+                        accent: { DEFAULT: '#5eead4', light: '#99f6e4', dark: '#2dd4bf' }
                     }
                 }
             }
@@ -87,9 +88,9 @@
                     <button onclick="goToToday()" class="ml-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors">Today</button>
                 </div>
                 <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap justify-center gap-4 text-sm">
-                    <div><span class="text-gray-400">Budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
-                    <div><span class="text-gray-400">Spent:</span> <span id="spent-amount" class="font-semibold">₱0</span></div>
+                    <div><span class="text-gray-400">Total budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
                     <div id="remaining-display"><span class="text-gray-400">Remaining:</span> <span id="remaining-amount" class="font-semibold text-green-400">₱0</span></div>
+                    <div><span class="text-gray-400">Overspent:</span> <span id="overspent-amount" class="font-semibold text-gray-300">₱0</span></div>
                 </div>
             </div>
 
@@ -110,6 +111,19 @@
                 </table>
             </div>
 
+            <!-- Household allocations use the expense calendar month. -->
+            <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Household Expenses</h2>
+            <div class="bg-dark-700 rounded-xl overflow-x-auto mb-6">
+                <table class="w-full min-w-[500px]">
+                    <thead><tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">
+                        <th class="px-4 py-3"><span class="sr-only">Actions</span></th>
+                        <th class="px-4 py-3">Category</th><th class="px-4 py-3">Monthly budget</th>
+                        <th class="px-4 py-3">Spent</th><th class="px-4 py-3">Status</th>
+                    </tr></thead>
+                    <tbody id="household-table-body"></tbody>
+                </table>
+            </div>
+
             <!-- Grouped Table -->
             <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Purchases</h2>
             <div id="monthly-table-container" class="bg-dark-700 rounded-xl overflow-x-auto">
@@ -119,6 +133,7 @@
                             <th class="px-4 py-3"></th>
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('bank')">Bank <span id="sort-icon-bank" class="text-xs"></span></th>
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('category')">Category <span id="sort-icon-category" class="text-xs"></span></th>
+                            <th class="px-4 py-3">Date</th>
                             <th class="px-4 py-3 cursor-pointer hover:text-gray-200 select-none" onclick="sortTable('total')">Total <span id="sort-icon-total" class="text-xs"></span></th>
                         </tr>
                     </thead>

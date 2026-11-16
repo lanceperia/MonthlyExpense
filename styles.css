@@ -12,7 +12,32 @@ body {
 }
 
 .expandable-row:hover {
-    background: rgba(14, 165, 233, 0.05);
+    background: rgba(94, 234, 212, 0.06);
+}
+
+/* Charcoal and teal: shared surfaces preserve all existing app controls. */
+:root { color-scheme: dark; }
+body { color: #ecf2ef; background: #111716; }
+header { background: #17201d !important; }
+thead { background: #202b26; }
+.bg-accent.text-white { color: #102a23; }
+.bg-accent.text-white:hover { color: #102a23; }
+.bg-dark-700.rounded-xl { border: 1px solid #303c38; }
+.modal-backdrop > div { border: 1px solid #405047; }
+input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid #5eead4;
+    outline-offset: 3px;
+}
+#budget-display { gap: 1.5rem; }
+#budget-display > div { display: flex; flex-direction: column; gap: .25rem; }
+#budget-display .font-semibold { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+td { font-variant-numeric: tabular-nums; }
+.household-status { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 12px; }
+.household-status.paid { background: #163d32; color: #86efc1; }
+.household-status.unpaid { background: #3c3020; color: #f5cc89; }
+#household-table-body [hidden] { display: none; }
+@media (pointer: coarse) {
+    td button { min-width: 36px; min-height: 44px; }
 }
 
 .transaction-details {

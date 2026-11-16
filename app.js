@@ -113,6 +113,7 @@ async function loadCategories() {
     } else {
         categories = snap.docs.map(d => d.data().name);
     }
+    categories = [...new Set([...categories, ...Object.keys(HOUSEHOLD_BUDGETS)])];
     categories.sort((a, b) => {
         if (a === 'Others') return 1;
         if (b === 'Others') return -1;
@@ -372,7 +373,7 @@ function buildPurchaseDate(dayOfMonth, refDate) {
 
 // SOA Logic: determine billing month for a purchase
 function getBillingMonth(purchaseDate, bankName) {
-    const date = new Date(purchaseDate);
+    const date = new Date(purchaseDate + 'T12:00:00');
     const day = date.getDate();
     const month = date.getMonth();
     const year = date.getFullYear();
@@ -396,34 +397,135 @@ function getPurchasesForMonth(month, year) {
     });
 }
 
+const HOUSEHOLD_BUDGETS = Object.freeze({ Grocery: 15000, PLDT: 1500, 'Water Bill': 500, Meralco: 6000 });
+
+function isHouseholdPurchase(purchase) {
+    return Object.hasOwn(HOUSEHOLD_BUDGETS, purchase.category);
+}
+
+function getHouseholdForMonth(month, year) {
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    return Object.entries(HOUSEHOLD_BUDGETS).map(([category, budget]) => {
+        const items = purchases.filter(p => p.category === category && p.date.startsWith(prefix))
+            .sort((a, b) => a.date.localeCompare(b.date));
+        const spent = items.reduce((total, p) => total + Number(p.amount), 0);
+        // Groceries retain their allocation; paid utilities release unused funds.
+        const commitment = category === 'Grocery' ? Math.max(budget, spent) : items.length ? spent : budget;
+        return { category, budget, spent, commitment, items };
+    });
+}
+
+function getMonthlyCommitment(otherPurchases, household) {
+    // Card repayments are transfers, not a second expense.
+    return otherPurchases.filter(p => p.category !== 'Payment').reduce((sum, p) => sum + Number(p.amount), 0)
+        + household.reduce((sum, item) => sum + item.commitment, 0);
+}
+
+function householdActions(item) {
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'text-accent hover:text-accent-light p-1';
+    edit.setAttribute('aria-label', 'Edit ' + item.category + ' expense');
+    edit.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+    edit.onclick = () => editPurchase(item.id);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'text-red-400 hover:text-red-300 p-1';
+    remove.setAttribute('aria-label', 'Delete ' + item.category + ' expense');
+    remove.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+    remove.onclick = () => deletePurchase(item.id);
+    const actions = document.createElement('div');
+    actions.className = 'flex items-center gap-1';
+    actions.append(edit, remove);
+    return actions;
+}
+
+function renderHousehold(groups) {
+    const body = document.getElementById('household-table-body');
+    body.replaceChildren();
+    const cell = (row, text = '') => {
+        const td = document.createElement('td');
+        td.className = 'px-4 py-3 text-sm';
+        td.textContent = text;
+        row.append(td);
+        return td;
+    };
+    groups.forEach(group => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-700/30 whitespace-nowrap';
+        const actionCell = cell(row);
+        cell(row, group.category);
+        cell(row, '₱' + formatNumber(group.budget));
+        cell(row, group.items.length ? '₱' + formatNumber(group.spent) : '—');
+        const status = cell(row);
+        if (group.category !== 'Grocery') {
+            const badge = document.createElement('span');
+            badge.className = 'household-status ' + (group.items.length ? 'paid' : 'unpaid');
+            badge.textContent = group.items.length ? 'Paid' : 'Unpaid';
+            status.append(badge);
+        } else status.textContent = '—';
+        if (group.spent > group.budget) {
+            const over = document.createElement('div');
+            over.className = 'text-xs text-red-400 mt-1';
+            over.textContent = '₱' + formatNumber(group.spent - group.budget) + ' over budget';
+            status.append(over);
+        }
+        body.append(row);
+        if (group.items.length === 1) actionCell.append(householdActions(group.items[0]));
+        if (group.items.length > 1) {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'text-accent p-1';
+            toggle.textContent = '▸';
+            toggle.setAttribute('aria-label', 'Expand ' + group.category + ' purchases');
+            toggle.setAttribute('aria-expanded', 'false');
+            actionCell.append(toggle);
+            const detail = document.createElement('tr');
+            detail.hidden = true;
+            const detailCell = cell(detail);
+            detailCell.colSpan = 5;
+            detailCell.className = 'p-0';
+            const table = document.createElement('table');
+            table.className = 'w-full bg-dark-800/50';
+            table.innerHTML = '<thead><tr class="text-left text-xs text-gray-400"><th class="px-4 py-2">Actions</th><th class="px-4 py-2">Bank</th><th class="px-4 py-2">Date</th><th class="px-4 py-2">Amount</th></tr></thead>';
+            const itemsBody = document.createElement('tbody');
+            group.items.forEach(item => {
+                const child = document.createElement('tr');
+                child.className = 'border-b border-gray-700/20';
+                cell(child).append(householdActions(item));
+                cell(child, item.bank);
+                cell(child, formatDate(item.date));
+                cell(child, '₱' + formatNumber(Number(item.amount)));
+                itemsBody.append(child);
+            });
+            table.append(itemsBody);
+            detailCell.append(table);
+            body.append(detail);
+            toggle.onclick = () => {
+                detail.hidden = !detail.hidden;
+                toggle.textContent = detail.hidden ? '▸' : '▾';
+                toggle.setAttribute('aria-expanded', String(!detail.hidden));
+            };
+        }
+    });
+}
+
 // Render Monthly View
 function renderMonthly() {
     document.getElementById('current-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
 
-    const monthPurchases = getPurchasesForMonth(currentMonth, currentYear);
-    const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-    const monthKey = `${currentYear}-${currentMonth}`;
-    const budget = settings.monthOverrides && settings.monthOverrides[monthKey] != null
-        ? settings.monthOverrides[monthKey]
-        : (settings.defaultBudget || 0);
-
-    document.getElementById('budget-amount').textContent = `₱${formatNumber(budget)}`;
-    document.getElementById('spent-amount').textContent = `₱${formatNumber(totalSpent)}`;
-
-    const remaining = budget - totalSpent;
-    const remainingEl = document.getElementById('remaining-amount');
-    if (remaining >= 0) {
-        remainingEl.textContent = `₱${formatNumber(remaining)}`;
-        remainingEl.className = 'font-semibold text-green-400';
-        document.querySelector('#remaining-display .text-gray-400').textContent = 'Remaining:';
-    } else {
-        remainingEl.textContent = `₱${formatNumber(Math.abs(remaining))}`;
-        remainingEl.className = 'font-semibold text-red-400';
-        document.querySelector('#remaining-display .text-gray-400').textContent = 'Overspent:';
-    }
-
-    renderBankSummary(monthPurchases);
+    const billingPurchases = getPurchasesForMonth(currentMonth, currentYear);
+    const monthPurchases = billingPurchases.filter(p => !isHouseholdPurchase(p));
+    const household = getHouseholdForMonth(currentMonth, currentYear);
+    const monthKey = currentYear + '-' + currentMonth;
+    const budget = Number(settings.monthOverrides?.[monthKey] ?? settings.defaultBudget ?? 0);
+    const available = budget - getMonthlyCommitment(monthPurchases, household);
+    document.getElementById('budget-amount').textContent = '₱' + formatNumber(budget);
+    document.getElementById('remaining-amount').textContent = '₱' + formatNumber(Math.max(0, available));
+    document.getElementById('overspent-amount').textContent = '₱' + formatNumber(Math.max(0, -available));
+    document.getElementById('overspent-amount').className = available < 0 ? 'font-semibold text-red-400' : 'font-semibold text-gray-300';
+    renderBankSummary(billingPurchases);
+    renderHousehold(household);
 
     // Group by bank then category
     const grouped = {};
@@ -475,6 +577,7 @@ function renderMonthly() {
             </td>
             <td class="px-4 py-3 text-sm font-medium">${group.bank}</td>
             <td class="px-4 py-3 text-sm">${categoryLabel}</td>
+            <td class="px-4 py-3 text-sm text-gray-400">${hasMultiple ? 'Multiple dates' : formatDate(group.items[0].date)}</td>
             <td class="px-4 py-3 text-sm font-semibold">${amountDisplay}</td>
         </tr>`;
         if (hasMultiple) {
@@ -489,8 +592,9 @@ function renderMonthly() {
                             <button onclick="event.stopPropagation(); deletePurchase('${item.id}')" class="text-red-400 hover:text-red-300 p-1">${delIcon}</button>
                         </div>
                     </td>
-                    <td class="px-4 py-2 pl-8 text-gray-400">${formatDate(item.date)}</td>
-                    <td class="px-4 py-2 text-gray-400">${item.others || item.category}</td>
+                    <td class="px-4 py-2 pl-8 text-gray-400">${item.bank}</td>
+                    <td class="px-4 py-2 text-gray-400">${item.othersText || item.category}</td>
+                    <td class="px-4 py-2 text-gray-400">${formatDate(item.date)}</td>
                     <td class="px-4 py-2 font-medium">${itemAmount}</td>
                 </tr>`;
             }).join('');
@@ -535,8 +639,8 @@ function renderSummary() {
     const year = parseInt(document.getElementById('summary-year').value);
     const yearPurchases = purchases.filter(p => {
         if (p.category === 'Payment') return false;
-        const billing = getBillingMonth(p.date, p.bank);
-        return billing.year === year;
+        const expenseYear = isHouseholdPurchase(p) ? Number(p.date.slice(0, 4)) : getBillingMonth(p.date, p.bank).year;
+        return expenseYear === year;
     });
 
     // Pie chart by category
@@ -657,7 +761,7 @@ function openAddPurchase() {
     document.getElementById('modal-purchase-title').textContent = 'Add Purchase';
     document.getElementById('purchase-id').value = '';
     document.getElementById('purchase-form').reset();
-    document.getElementById('purchase-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('purchase-date').value = buildPurchaseDate(new Date().getDate(), new Date());
     populatePurchaseDropdowns();
     document.getElementById('others-input-wrapper').classList.add('hidden');
     openModal('modal-purchase');
@@ -699,6 +803,11 @@ async function savePurchase(e) {
         purchases.push({ id: ref.id, ...data });
     }
 
+    if (isHouseholdPurchase(data)) {
+        const [year, month] = data.date.split('-').map(Number);
+        currentYear = year;
+        currentMonth = month - 1;
+    }
     closeModal('modal-purchase');
     renderMonthly();
 }
@@ -1040,7 +1149,7 @@ function formatNumber(n) {
 }
 
 function formatDate(dateStr) {
-    const d = new Date(dateStr);
+    const d = new Date(dateStr + 'T12:00:00');
     return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
