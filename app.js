@@ -520,10 +520,13 @@ function renderMonthly() {
     const monthKey = currentYear + '-' + currentMonth;
     const budget = Number(settings.monthOverrides?.[monthKey] ?? settings.defaultBudget ?? 0);
     const available = budget - getMonthlyCommitment(monthPurchases, household);
+    const actualSpent = billingPurchases.filter(p => p.category !== 'Payment')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
     document.getElementById('budget-amount').textContent = '₱' + formatNumber(budget);
-    document.getElementById('remaining-amount').textContent = '₱' + formatNumber(Math.max(0, available));
-    document.getElementById('overspent-amount').textContent = '₱' + formatNumber(Math.max(0, -available));
-    document.getElementById('overspent-amount').className = available < 0 ? 'font-semibold text-red-400' : 'font-semibold text-gray-300';
+    document.getElementById('spent-amount').textContent = '₱' + formatNumber(actualSpent);
+    document.getElementById('remaining-label').textContent = available < 0 ? 'Overspent:' : 'Remaining:';
+    document.getElementById('remaining-amount').textContent = '₱' + formatNumber(Math.abs(available));
+    document.getElementById('remaining-amount').className = available < 0 ? 'font-semibold text-red-400' : 'font-semibold text-green-400';
     renderBankSummary(billingPurchases);
     renderHousehold(household);
 
