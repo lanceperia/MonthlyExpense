@@ -662,13 +662,17 @@ function updateSortIcons() {
 }
 
 // Render Summary View
-function renderSummary() {
-    const year = parseInt(document.getElementById('summary-year').value);
-    const yearPurchases = purchases.filter(p => {
+function getPurchasesForYear(year) {
+    return purchases.filter(p => {
         if (p.category === 'Payment') return false;
         const expenseYear = getBillingMonth(p.date, p.bank).year;
         return expenseYear === year;
     });
+}
+
+function renderSummary() {
+    const year = Number(document.getElementById('summary-year').value);
+    const yearPurchases = getPurchasesForYear(year);
 
     // Pie chart by category
     const catTotals = {};
@@ -714,6 +718,81 @@ function renderSummary() {
     document.getElementById('summary-category-table').innerHTML = catLabels.map(cat =>
         `<tr class="border-b border-gray-700/30"><td class="py-2">${cat}</td><td class="py-2 text-right font-semibold">₱${formatNumber(catTotals[cat])}</td></tr>`
     ).join('') || '<tr><td colspan="2" class="py-4 text-center text-gray-500">No data</td></tr>';
+}
+
+// Quote CSV fields and keep user-entered text from being treated as formulas.
+function escapeCsvCell(value) {
+    let text = String(value ?? '');
+    if (typeof value === 'string' && /^[\s\uFEFF]*[=+@-]/.test(text) && !/^-\d+(\.\d+)?$/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function buildYearlyReportCsv(year) {
+    const items = getPurchasesForYear(year).map(purchase => ({
+        purchase,
+        billing: getBillingMonth(purchase.date, purchase.bank)
+    })).sort((a, b) => a.billing.month - b.billing.month
+        || a.purchase.date.localeCompare(b.purchase.date)
+        || a.purchase.bank.localeCompare(b.purchase.bank));
+    const monthlyTotals = Array(12).fill(0);
+    const bankTotals = new Map();
+    const categoryTotals = new Map();
+    let total = 0;
+
+    items.forEach(({ purchase, billing }) => {
+        const amount = Number(purchase.amount);
+        const category = purchase.category === 'Others' ? (purchase.othersText || 'Others') : purchase.category;
+        monthlyTotals[billing.month] += amount;
+        bankTotals.set(purchase.bank, (bankTotals.get(purchase.bank) || 0) + amount);
+        categoryTotals.set(category, (categoryTotals.get(category) || 0) + amount);
+        total += amount;
+    });
+
+    const totalsRows = totals => [...totals].sort((a, b) => b[1] - a[1])
+        .map(([label, amount]) => [label, amount.toFixed(2)]);
+    const rows = [
+        ['Yearly Expense Report', year],
+        ['Period', 'Billing year (SOA rules apply)'],
+        ['Currency', 'PHP'],
+        ['Excluded', 'Payment (card repayments)'],
+        ['Total Expenses (PHP)', total.toFixed(2)],
+        ['Transaction Count', items.length],
+        [],
+        ['Monthly Totals'],
+        ['Billing Month', 'Amount (PHP)'],
+        ...monthlyTotals.map((amount, month) => [MONTH_NAMES[month], amount.toFixed(2)]),
+        [],
+        ['Total by Bank'],
+        ['Bank', 'Amount (PHP)'],
+        ...totalsRows(bankTotals),
+        [],
+        ['Total by Category'],
+        ['Category', 'Amount (PHP)'],
+        ...totalsRows(categoryTotals),
+        [],
+        ['Transactions'],
+        ['Purchase Date', 'Billing Year', 'Billing Month', 'Bank', 'Category', 'Description', 'Amount (PHP)'],
+        ...items.map(({ purchase, billing }) => [
+            purchase.date, billing.year, MONTH_NAMES[billing.month], purchase.bank,
+            purchase.category, purchase.othersText || '', Number(purchase.amount).toFixed(2)
+        ])
+    ];
+    return '\uFEFF' + rows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+function downloadYearlyReport() {
+    const year = Number(document.getElementById('summary-year').value);
+    if (!Number.isInteger(year) || year < 1) return;
+    const blob = new Blob([buildYearlyReportCsv(year)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `expense-report-${year}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Allow the browser to start the download before releasing its URL.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function populateYearDropdown() {

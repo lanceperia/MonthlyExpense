@@ -46,6 +46,8 @@ Click the edit button on any row to update the SOA amount and paid status. Data 
 
 Switch to the **Summary** tab to see yearly totals broken down by category (pie chart) and by bank. Use the year dropdown to view different years.
 
+Click **Download CSV** to download `expense-report-YYYY.csv` for the selected year. The report includes the annual total, all 12 monthly totals, totals by bank and category, and individual transactions. It follows SOA billing years (so a late-December card purchase may appear in the following year's report) and excludes **Payment** card repayments, matching the Summary view. All amounts are in PHP. Years without expenses produce a report with zero totals and no transactions. The CSV opens in Excel or other spreadsheet apps.
+
 ### Settings
 
 Click the gear icon to access settings:

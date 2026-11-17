@@ -146,10 +146,12 @@
 
         <!-- Summary View -->
         <div id="view-summary" class="max-w-6xl mx-auto px-4 py-6 hidden">
-            <div class="flex items-center gap-4 mb-6">
-                <label class="text-sm text-gray-400">Year:</label>
+            <div class="flex flex-wrap items-center gap-4 mb-6">
+                <label for="summary-year" class="text-sm text-gray-400">Year:</label>
                 <select id="summary-year" onchange="renderSummary()" class="bg-dark-700 border border-gray-600 rounded-lg px-3 py-2 text-sm"></select>
+                <button type="button" onclick="downloadYearlyReport()" class="bg-accent hover:bg-accent-dark text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">Download CSV</button>
             </div>
+            <p class="text-xs text-gray-400 mb-6">Reports use billing years and exclude card repayments (Payment). All amounts are in PHP.</p>
 
             <!-- Pie Chart -->
             <div class="bg-dark-700 rounded-xl p-6 mb-6">
