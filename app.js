@@ -404,8 +404,10 @@ function isHouseholdPurchase(purchase) {
 }
 
 
-function getHouseholdForMonth(month, year) {
+function getHouseholdForMonth(month, year, today = new Date()) {
     const monthPurchases = getPurchasesForMonth(month, year);
+    // Grocery is one shared allocation across cards and cash for the billing month.
+    const groceryCycleClosed = today >= new Date(year, month, 15);
 
     return Object.entries(HOUSEHOLD_BUDGETS).map(
         ([category, budget]) => {
@@ -418,10 +420,10 @@ function getHouseholdForMonth(month, year) {
                 0
             );
 
-            // Grocery counts only actual purchases.
-            // Utilities reserve their budget until paid.
+            // Hold unused grocery money until the 15th; overspending always counts.
+            // Utilities reserve their budget until a bill is recorded.
             const commitment = category === 'Grocery'
-                ? spent
+                ? (groceryCycleClosed ? spent : Math.max(budget, spent))
                 : (items.length ? spent : budget);
 
             return {
@@ -429,6 +431,7 @@ function getHouseholdForMonth(month, year) {
                 budget,
                 spent,
                 commitment,
+                groceryCycleClosed,
                 items
             };
         }
@@ -487,7 +490,17 @@ function renderHousehold(groups) {
             badge.className = 'household-status ' + (group.items.length ? 'paid' : 'unpaid');
             badge.textContent = group.items.length ? 'Paid' : 'Unpaid';
             status.append(badge);
-        } else status.textContent = '—';
+        } else {
+            const unused = Math.max(0, group.budget - group.spent);
+            status.classList.add('text-gray-400');
+            status.textContent = 'Available to spend: ₱' + formatNumber(unused);
+            const reservation = document.createElement('div');
+            reservation.className = 'text-xs text-gray-400 mt-1';
+            reservation.textContent = group.groceryCycleClosed
+                ? 'Cycle finished · unused money released'
+                : 'Reserved until the 15th';
+            status.append(reservation);
+        }
         if (group.spent > group.budget) {
             const over = document.createElement('div');
             over.className = 'text-xs text-red-400 mt-1';
@@ -545,7 +558,9 @@ function renderMonthly() {
         household
     );
     const available = budget - totalCommitted;
-    const actualSpent = totalCommitted;
+    const actualSpent = billingPurchases
+        .filter(p => p.category !== 'Payment')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
     document.getElementById('budget-amount').textContent = '₱' + formatNumber(budget);
     document.getElementById('spent-amount').textContent = '₱' + formatNumber(actualSpent);
     document.getElementById('remaining-label').textContent = available < 0 ? 'Overspent:' : 'Remaining:';

@@ -32,6 +32,10 @@ Each bank has an SOA date (day of month). A purchase made on or after that day i
 
 Use the left/right arrows to browse billing months. Click **Today** to jump back to the current month. The budget panel shows your budget, total spent, and remaining balance.
 
+**Remaining** deducts household reservations as well as actual purchases. Grocery reserves its full ₱15,000 allocation until the 15th of its billing month. Grocery purchases use that reservation, so they do not reduce Remaining a second time; spending above ₱15,000 reduces Remaining further. On the 15th (using the device's local date), only the unused grocery allocation is released into that month's Remaining balance. It does not increase the next month's budget. Purchases still follow their bank's SOA billing month. **Actual spent** includes recorded expenses only and excludes card repayments and unspent reservations. The release is calculated whenever the monthly view renders, including on app load or month navigation.
+
+The grocery row's **Status** shows **Available to spend**, the unused portion of its ₱15,000 allocation (zero when exhausted). This is a tracking figure only and does not add money to **Remaining** before the 15th. Overspending is shown separately in the same status cell.
+
 ### Bank Summary
 
 Below the budget panel, a summary table shows each billable bank (excludes Cash) for the current month:
