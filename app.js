@@ -20,7 +20,7 @@ let purchases = [];
 let categories = [];
 let banks = [];
 let settings = { defaultBudget: 0, monthOverrides: {} };
-const groceryReleasePending = new Set();
+let groceryReleaseTimer = null;
 let recurringTemplates = [];
 let recurringLog = [];
 let bankMonthlyData = {};
@@ -405,10 +405,10 @@ function isHouseholdPurchase(purchase) {
 }
 
 
-function getHouseholdForMonth(month, year) {
+function getHouseholdForMonth(month, year, today = new Date()) {
     const monthPurchases = getPurchasesForMonth(month, year);
     // Grocery is one shared allocation across cards and cash for the billing month.
-    const groceryCycleClosed = settings.groceryReleasedMonths?.[year + '-' + month] === true;
+    const groceryCycleClosed = today >= new Date(year, month + 1, 15);
 
     return Object.entries(HOUSEHOLD_BUDGETS).map(
         ([category, budget]) => {
@@ -421,7 +421,7 @@ function getHouseholdForMonth(month, year) {
                 0
             );
 
-            // Hold unused grocery money until manually released; overspending always counts.
+            // Hold unused grocery money until the following month's 15th; overspending always counts.
             // Utilities reserve their budget until a bill is recorded.
             const commitment = category === 'Grocery'
                 ? (groceryCycleClosed ? spent : Math.max(budget, spent))
@@ -439,27 +439,6 @@ function getHouseholdForMonth(month, year) {
     );
 }
 
-
-async function releaseGrocery(month, year) {
-    const monthKey = year + '-' + month;
-    const grocery = getHouseholdForMonth(month, year).find(item => item.category === 'Grocery');
-    if (!currentUser || groceryReleasePending.has(monthKey) || grocery.groceryCycleClosed || grocery.spent >= grocery.budget) return;
-
-    groceryReleasePending.add(monthKey);
-    renderMonthly();
-    try {
-        await db.collection('users').doc(currentUser.uid).set({
-            settings: { groceryReleasedMonths: { [monthKey]: true } }
-        }, { merge: true });
-        if (!settings.groceryReleasedMonths) settings.groceryReleasedMonths = {};
-        settings.groceryReleasedMonths[monthKey] = true;
-    } catch (error) {
-        alert('Could not release the grocery budget. Please try again.');
-    } finally {
-        groceryReleasePending.delete(monthKey);
-        renderMonthly();
-    }
-}
 
 function getMonthlyCommitment(otherPurchases, household) {
     // Card repayments are transfers, not a second expense.
@@ -522,21 +501,8 @@ function renderHousehold(groups) {
             reservation.className = 'text-xs text-gray-400 mt-1';
             reservation.textContent = group.groceryCycleClosed
                 ? 'Cycle finished · unused money released'
-                : 'Included in Total spent until released';
+                : 'Auto-release: ' + MONTH_NAMES[(month + 1) % 12] + ' 15, ' + (year + (month === 11 ? 1 : 0));
             status.append(reservation);
-            if (!group.groceryCycleClosed && unused > 0) {
-                const release = document.createElement('button');
-                release.type = 'button';
-                release.className = 'mt-2 px-3 py-1 text-xs rounded-lg bg-accent text-dark-800 hover:bg-accent-light disabled:opacity-50';
-                release.disabled = groceryReleasePending.has(year + '-' + month);
-                release.textContent = release.disabled ? 'Releasing…' : 'Release ₱' + formatNumber(unused);
-                release.setAttribute('aria-label', 'Release unused grocery budget for ' + MONTH_NAMES[month] + ' ' + year);
-                release.onclick = event => {
-                    event.stopPropagation();
-                    return releaseGrocery(month, year);
-                };
-                status.append(release);
-            }
         }
         if (group.spent > group.budget) {
             const over = document.createElement('div');
@@ -583,6 +549,13 @@ function renderHousehold(groups) {
 
 // Render Monthly View
 function renderMonthly() {
+    clearTimeout(groceryReleaseTimer);
+    groceryReleaseTimer = null;
+    const untilRelease = new Date(currentYear, currentMonth + 1, 15).getTime() - Date.now();
+    if (currentUser && untilRelease > 0) {
+        // Refresh an open view at the cutoff; long waits are rechecked within timer limits.
+        groceryReleaseTimer = setTimeout(() => renderMonthly(), Math.min(untilRelease, 2147483647));
+    }
     document.getElementById('current-month-label').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
 
     const billingPurchases = getPurchasesForMonth(currentMonth, currentYear);

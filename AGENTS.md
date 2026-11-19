@@ -10,7 +10,7 @@ Keep changes focused and preserve the existing vanilla JavaScript architecture.
 - `app.js`: Firebase configuration, authentication, Firestore access, state,
   calculations, rendering, CSV export, and event handlers.
 - `styles.css`: custom styling over Tailwind; charcoal surfaces and teal accents.
-- `tests/household-budget.test.cjs`: grocery allocations, manual release,
+- `tests/household-budget.test.cjs`: grocery allocations, automatic release,
   commitments, actual spending, and SOA boundaries.
 - `tests/yearly-report.test.cjs`: billing-year reports, totals, CSV escaping,
   empty years, and download behavior.
@@ -52,27 +52,27 @@ Keep actual expenses, reserved money, and card repayments distinct.
 
 ### Grocery behavior explicitly requested by the user
 
-- Include the full PHP 15,000 allocation in Total spent immediately for every
-  unreleased billing month. Grocery purchases consume that allocation without
-  being counted twice. Commitment is `Math.max(15000, spent)` before release.
-- Release is manual, using the button in the grocery Status cell. There is no
-  automatic date cutoff. This replaces the earlier 15th-of-next-month rule.
-- Show **Available to spend** as `Math.max(0, 15000 - spent)` for tracking only.
-  Show **Release PHP <unused amount>** only while unused money is positive and
-  the month has not been released. Hide the button at or above PHP 15,000 spent.
-- Spending above PHP 15,000 continues to increase Total spent without a cap,
-  both before and after release. For example, PHP 16,000 groceries commits PHP 16,000.
-- On release, commitment becomes actual grocery spending. Only the unused portion
-  returns to that billing month's Remaining. Do not increase the next month's budget.
-- Persist release state as `settings.groceryReleasedMonths[year + '-' + month]`
-  with zero-based months on the user document. Missing entries mean unreleased.
-  Merge only the selected flag so other settings and months are preserved.
-- Update local state only after a successful save. Block duplicate clicks while
-  saving, keep funds allocated on failure, and stop clicks from expanding the row.
-- Release is per billing month across all banks and cash. Continue using existing
-  bank SOA attribution for purchases. Later edits recalculate actual spending.
-- Example: PHP 7,200 spent commits PHP 15,000 before release and PHP 7,200 after;
-  the button releases PHP 7,800. It disappears after successful release.
+- Include the full PHP 15,000 allocation in Total spent before release.
+  Purchases consume the allocation without being counted twice. Commitment is
+  `Math.max(15000, spent)`; spending above PHP 15,000 continues counting in full.
+- Release is automatic at local midnight on the **15th of the following month**.
+  December 2026 releases January 15, 2027. There is no manual release button.
+- At and after cutoff, commitment equals actual grocery spending. Only the unused
+  allocation returns to that billing month's Remaining; the next month's budget
+  does not increase. Overspending continues to count in full after cutoff.
+- Show **Available to spend** as `Math.max(0, 15000 - spent)` in Status for tracking,
+  along with the automatic release date or a finished-cycle note.
+- `getHouseholdForMonth(month, year, today)` derives release from the date.
+  Old `settings.groceryReleasedMonths` flags are ignored; do not delete user data.
+- Monthly rendering schedules a refresh at the cutoff for an open view. Replace
+  the timer on navigation and cap long delays at the browser timer limit.
+  Opening the app after cutoff automatically uses the released calculation.
+- Release applies across cards and cash for a billing month. Preserve existing
+  bank SOA purchase attribution. Later edits recalculate spending.
+- Total spent still includes estimated utilities until bills are recorded. Do
+  not describe it as final actual expenses while those estimates remain.
+- Example: PHP 7,200 spent commits PHP 15,000 before cutoff and PHP 7,200 after;
+  only PHP 7,800 is released. Reports always show recorded purchases only.
 
 ### SOA billing and dates
 
@@ -163,7 +163,7 @@ changes do not require new tests.
 
 For UI changes, show a reviewable preview or before/after example using sample
 figures, and state any limits to visual verification. For budget changes, check
-manual release persistence and failures, empty purchases, exact-budget spending, overspending,
+the following month's 14th/15th cutoff and open-view refresh, empty purchases, exact-budget spending, overspending,
 repayments, SOA cutoff days, future months, and year rollover as applicable.
 
 Inspect the diff and preserve unrelated user edits. The user has requested review
