@@ -20,6 +20,7 @@ let purchases = [];
 let categories = [];
 let banks = [];
 let settings = { defaultBudget: 0, monthOverrides: {} };
+const groceryReleasePending = new Set();
 let recurringTemplates = [];
 let recurringLog = [];
 let bankMonthlyData = {};
@@ -404,10 +405,10 @@ function isHouseholdPurchase(purchase) {
 }
 
 
-function getHouseholdForMonth(month, year, today = new Date()) {
+function getHouseholdForMonth(month, year) {
     const monthPurchases = getPurchasesForMonth(month, year);
     // Grocery is one shared allocation across cards and cash for the billing month.
-    const groceryCycleClosed = today >= new Date(year, month, 15);
+    const groceryCycleClosed = settings.groceryReleasedMonths?.[year + '-' + month] === true;
 
     return Object.entries(HOUSEHOLD_BUDGETS).map(
         ([category, budget]) => {
@@ -420,7 +421,7 @@ function getHouseholdForMonth(month, year, today = new Date()) {
                 0
             );
 
-            // Hold unused grocery money until the 15th; overspending always counts.
+            // Hold unused grocery money until manually released; overspending always counts.
             // Utilities reserve their budget until a bill is recorded.
             const commitment = category === 'Grocery'
                 ? (groceryCycleClosed ? spent : Math.max(budget, spent))
@@ -438,6 +439,27 @@ function getHouseholdForMonth(month, year, today = new Date()) {
     );
 }
 
+
+async function releaseGrocery(month, year) {
+    const monthKey = year + '-' + month;
+    const grocery = getHouseholdForMonth(month, year).find(item => item.category === 'Grocery');
+    if (!currentUser || groceryReleasePending.has(monthKey) || grocery.groceryCycleClosed || grocery.spent >= grocery.budget) return;
+
+    groceryReleasePending.add(monthKey);
+    renderMonthly();
+    try {
+        await db.collection('users').doc(currentUser.uid).set({
+            settings: { groceryReleasedMonths: { [monthKey]: true } }
+        }, { merge: true });
+        if (!settings.groceryReleasedMonths) settings.groceryReleasedMonths = {};
+        settings.groceryReleasedMonths[monthKey] = true;
+    } catch (error) {
+        alert('Could not release the grocery budget. Please try again.');
+    } finally {
+        groceryReleasePending.delete(monthKey);
+        renderMonthly();
+    }
+}
 
 function getMonthlyCommitment(otherPurchases, household) {
     // Card repayments are transfers, not a second expense.
@@ -465,6 +487,8 @@ function householdActions(item) {
 }
 
 function renderHousehold(groups) {
+    const month = currentMonth;
+    const year = currentYear;
     const body = document.getElementById('household-table-body');
     body.replaceChildren();
     const cell = (row, text = '') => {
@@ -498,8 +522,21 @@ function renderHousehold(groups) {
             reservation.className = 'text-xs text-gray-400 mt-1';
             reservation.textContent = group.groceryCycleClosed
                 ? 'Cycle finished · unused money released'
-                : 'Reserved until the 15th';
+                : 'Included in Total spent until released';
             status.append(reservation);
+            if (!group.groceryCycleClosed && unused > 0) {
+                const release = document.createElement('button');
+                release.type = 'button';
+                release.className = 'mt-2 px-3 py-1 text-xs rounded-lg bg-accent text-dark-800 hover:bg-accent-light disabled:opacity-50';
+                release.disabled = groceryReleasePending.has(year + '-' + month);
+                release.textContent = release.disabled ? 'Releasing…' : 'Release ₱' + formatNumber(unused);
+                release.setAttribute('aria-label', 'Release unused grocery budget for ' + MONTH_NAMES[month] + ' ' + year);
+                release.onclick = event => {
+                    event.stopPropagation();
+                    return releaseGrocery(month, year);
+                };
+                status.append(release);
+            }
         }
         if (group.spent > group.budget) {
             const over = document.createElement('div');
@@ -558,11 +595,8 @@ function renderMonthly() {
         household
     );
     const available = budget - totalCommitted;
-    const actualSpent = billingPurchases
-        .filter(p => p.category !== 'Payment')
-        .reduce((sum, p) => sum + Number(p.amount), 0);
     document.getElementById('budget-amount').textContent = '₱' + formatNumber(budget);
-    document.getElementById('spent-amount').textContent = '₱' + formatNumber(actualSpent);
+    document.getElementById('spent-amount').textContent = '₱' + formatNumber(totalCommitted);
     document.getElementById('remaining-label').textContent = available < 0 ? 'Overspent:' : 'Remaining:';
     document.getElementById('remaining-amount').textContent = '₱' + formatNumber(Math.abs(available));
     document.getElementById('remaining-amount').className = available < 0 ? 'font-semibold text-red-400' : 'font-semibold text-green-400';

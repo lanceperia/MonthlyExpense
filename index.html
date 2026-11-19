@@ -89,7 +89,7 @@
                 </div>
                 <div id="budget-display" class="bg-dark-700 rounded-xl p-4 flex flex-wrap justify-center gap-4 text-sm">
                     <div><span class="text-gray-400">Total budget:</span> <span id="budget-amount" class="font-semibold">₱0</span></div>
-                    <div><span class="text-gray-400">Actual spent:</span> <span id="spent-amount" class="font-semibold">₱0</span></div>
+                    <div title="Includes the full grocery allocation and household commitments; card repayments are excluded."><span class="text-gray-400">Total spent:</span> <span id="spent-amount" class="font-semibold">₱0</span></div>
                     <div id="remaining-display" title="Household reservations are already deducted from this balance."><span id="remaining-label" class="text-gray-400">Remaining:</span> <span id="remaining-amount" class="font-semibold text-green-400">₱0</span></div>
                 </div>
             </div>
@@ -113,7 +113,7 @@
 
             <!-- Household allocations follow the payment method's billing month. -->
             <h2 class="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wide">Household Expenses</h2>
-            <p class="text-xs text-gray-400 mb-3">The full grocery budget is deducted from Remaining. Grocery's Available to spend tracks the unused allocation only; unused money is released on the 15th of the billing month.</p>
+            <p class="text-xs text-gray-400 mb-3">The full grocery budget is included in Total spent. Use Release to return the unused amount to Remaining. Spending above ₱15,000 continues to increase Total spent.</p>
             <div class="bg-dark-700 rounded-xl overflow-x-auto mb-6">
                 <table class="w-full min-w-[500px]">
                     <thead><tr class="border-b border-gray-700/50 text-left text-sm text-gray-400 whitespace-nowrap">

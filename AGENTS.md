@@ -10,7 +10,7 @@ Keep changes focused and preserve the existing vanilla JavaScript architecture.
 - `app.js`: Firebase configuration, authentication, Firestore access, state,
   calculations, rendering, CSV export, and event handlers.
 - `styles.css`: custom styling over Tailwind; charcoal surfaces and teal accents.
-- `tests/household-budget.test.cjs`: grocery reservations, release cutoff,
+- `tests/household-budget.test.cjs`: grocery allocations, manual release,
   commitments, actual spending, and SOA boundaries.
 - `tests/yearly-report.test.cjs`: billing-year reports, totals, CSV escaping,
   empty years, and download behavior.
@@ -42,31 +42,37 @@ Keep actual expenses, reserved money, and card repayments distinct.
   commitments and excludes `Payment` repayments.
 - Main **Remaining** equals the selected budget minus total commitments.
   Negative values display as **Overspent**.
-- **Actual spent** sums recorded expenses for the billing month, excluding
-  `Payment`; unspent reservations must never appear as actual spending.
+- The monthly **Total spent** figure equals total commitments, including
+  unused household reservations and excluding `Payment`. It must reconcile with
+  Remaining/Overspent. Reports continue to show actual purchases only.
+- The user explicitly wants household allocations included in **Total spent**.
+  Do not split the monthly panel into Actual spent and Reserved figures or rename
+  the combined total Spent + reserved. Show Total budget, Total spent, and
+  Remaining/Overspent. Grocery's Available to spend stays in its Status cell.
 
 ### Grocery behavior explicitly requested by the user
 
-- Deduct the full PHP 15,000 grocery allocation immediately, including for a
-  future billing month. Unspent grocery money must stay protected from other spending.
-- Before the 15th of that billing month, grocery commitment is
-  `Math.max(15000, spent)`. Purchases consume the reservation rather than reducing
-  Remaining a second time. Overspending must always reduce Remaining further.
-- Starting at local midnight on the **15th of the billing month**, grocery
-  commitment becomes actual spending. Release only the unused allocation into
-  that month's Remaining, never the full PHP 15,000 after spending has occurred.
-- The release is calculated on monthly rendering, including app load and month
-  navigation. There is currently no midnight refresh timer or persisted release
-  transaction. Later edits to purchases recalculate the figures.
-- Release does not increase the next month's budget. That month has its own
-  grocery reservation.
-- Use the existing **Status** column to show grocery **Available to spend**:
-  `Math.max(0, 15000 - spent)`. This is tracking only, not extra money in Remaining.
-  Show the reservation/release note underneath and overspending separately.
-- Grocery is one allocation across all payment methods. Continue assigning each
-  purchase by its bank's SOA rules; the fixed 15th release is a separate rule.
-- Example: PHP 7,200 spent commits PHP 15,000 before the 15th and PHP 7,200 on
-  or after the 15th. Status shows PHP 7,800 available to spend; only PHP 7,800 is released.
+- Include the full PHP 15,000 allocation in Total spent immediately for every
+  unreleased billing month. Grocery purchases consume that allocation without
+  being counted twice. Commitment is `Math.max(15000, spent)` before release.
+- Release is manual, using the button in the grocery Status cell. There is no
+  automatic date cutoff. This replaces the earlier 15th-of-next-month rule.
+- Show **Available to spend** as `Math.max(0, 15000 - spent)` for tracking only.
+  Show **Release PHP <unused amount>** only while unused money is positive and
+  the month has not been released. Hide the button at or above PHP 15,000 spent.
+- Spending above PHP 15,000 continues to increase Total spent without a cap,
+  both before and after release. For example, PHP 16,000 groceries commits PHP 16,000.
+- On release, commitment becomes actual grocery spending. Only the unused portion
+  returns to that billing month's Remaining. Do not increase the next month's budget.
+- Persist release state as `settings.groceryReleasedMonths[year + '-' + month]`
+  with zero-based months on the user document. Missing entries mean unreleased.
+  Merge only the selected flag so other settings and months are preserved.
+- Update local state only after a successful save. Block duplicate clicks while
+  saving, keep funds allocated on failure, and stop clicks from expanding the row.
+- Release is per billing month across all banks and cash. Continue using existing
+  bank SOA attribution for purchases. Later edits recalculate actual spending.
+- Example: PHP 7,200 spent commits PHP 15,000 before release and PHP 7,200 after;
+  the button releases PHP 7,800. It disappears after successful release.
 
 ### SOA billing and dates
 
@@ -157,7 +163,7 @@ changes do not require new tests.
 
 For UI changes, show a reviewable preview or before/after example using sample
 figures, and state any limits to visual verification. For budget changes, check
-the 14th/15th boundary, empty purchases, exact-budget spending, overspending,
+manual release persistence and failures, empty purchases, exact-budget spending, overspending,
 repayments, SOA cutoff days, future months, and year rollover as applicable.
 
 Inspect the diff and preserve unrelated user edits. The user has requested review

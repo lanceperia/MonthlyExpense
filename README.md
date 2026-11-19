@@ -32,9 +32,11 @@ Each bank has an SOA date (day of month). A purchase made on or after that day i
 
 Use the left/right arrows to browse billing months. Click **Today** to jump back to the current month. The budget panel shows your budget, total spent, and remaining balance.
 
-**Remaining** deducts household reservations as well as actual purchases. Grocery reserves its full ₱15,000 allocation until the 15th of its billing month. Grocery purchases use that reservation, so they do not reduce Remaining a second time; spending above ₱15,000 reduces Remaining further. On the 15th (using the device's local date), only the unused grocery allocation is released into that month's Remaining balance. It does not increase the next month's budget. Purchases still follow their bank's SOA billing month. **Actual spent** includes recorded expenses only and excludes card repayments and unspent reservations. The release is calculated whenever the monthly view renders, including on app load or month navigation.
+**Remaining** is the selected budget minus **Total spent**, which includes household allocations and recorded purchases but excludes card repayments. Grocery counts its full ₱15,000 allocation until you manually release it. Purchases use that allocation without being counted twice; spending above ₱15,000 keeps increasing Total spent. Click the grocery **Release** button to return only the unused amount to that billing month's Remaining. The release is saved for that month and does not increase the next month's budget. There is no automatic date cutoff. Purchases still follow bank SOA rules. Yearly summaries and CSV exports continue to report actual purchases only.
 
-The grocery row's **Status** shows **Available to spend**, the unused portion of its ₱15,000 allocation (zero when exhausted). This is a tracking figure only and does not add money to **Remaining** before the 15th. Overspending is shown separately in the same status cell.
+The budget panel shows **Total budget**, **Total spent**, and **Remaining/Overspent**. Total spent includes the full grocery allocation until release and other household commitments, rather than displaying separate actual-spending and reservation figures. Bank Summary totals contain recorded card purchases only; they exclude unused allocations and cash.
+
+The grocery row's **Status** shows **Available to spend**, the unused portion of its ₱15,000 allocation, for tracking only. The **Release** button appears only when there is an unused amount and that billing month has not been released. It is hidden when grocery spending reaches or exceeds ₱15,000 and after successful release. Overspending is shown separately in the same status cell.
 
 ### Bank Summary
 
