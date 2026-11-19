@@ -55,8 +55,8 @@ Keep actual expenses, reserved money, and card repayments distinct.
 - Include the full PHP 15,000 allocation in Total spent before release.
   Purchases consume the allocation without being counted twice. Commitment is
   `Math.max(15000, spent)`; spending above PHP 15,000 continues counting in full.
-- Release is automatic at local midnight on the **15th of the following month**.
-  December 2026 releases January 15, 2027. There is no manual release button.
+- Release is automatic at local midnight on the **15th of the selected billing month**.
+  December 2026 releases December 15, 2026, because the December billing cycle covers prior-month spending. There is no manual release button.
 - At and after cutoff, commitment equals actual grocery spending. Only the unused
   allocation returns to that billing month's Remaining; the next month's budget
   does not increase. Overspending continues to count in full after cutoff.
@@ -163,7 +163,7 @@ changes do not require new tests.
 
 For UI changes, show a reviewable preview or before/after example using sample
 figures, and state any limits to visual verification. For budget changes, check
-the following month's 14th/15th cutoff and open-view refresh, empty purchases, exact-budget spending, overspending,
+the billing month's 14th/15th cutoff and open-view refresh, empty purchases, exact-budget spending, overspending,
 repayments, SOA cutoff days, future months, and year rollover as applicable.
 
 Inspect the diff and preserve unrelated user edits. The user has requested review

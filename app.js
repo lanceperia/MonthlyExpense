@@ -408,7 +408,7 @@ function isHouseholdPurchase(purchase) {
 function getHouseholdForMonth(month, year, today = new Date()) {
     const monthPurchases = getPurchasesForMonth(month, year);
     // Grocery is one shared allocation across cards and cash for the billing month.
-    const groceryCycleClosed = today >= new Date(year, month + 1, 15);
+    const groceryCycleClosed = today >= new Date(year, month, 15);
 
     return Object.entries(HOUSEHOLD_BUDGETS).map(
         ([category, budget]) => {
@@ -421,7 +421,7 @@ function getHouseholdForMonth(month, year, today = new Date()) {
                 0
             );
 
-            // Hold unused grocery money until the following month's 15th; overspending always counts.
+            // Hold unused grocery money until the billing month's 15th; overspending always counts.
             // Utilities reserve their budget until a bill is recorded.
             const commitment = category === 'Grocery'
                 ? (groceryCycleClosed ? spent : Math.max(budget, spent))
@@ -501,7 +501,7 @@ function renderHousehold(groups) {
             reservation.className = 'text-xs text-gray-400 mt-1';
             reservation.textContent = group.groceryCycleClosed
                 ? 'Cycle finished · unused money released'
-                : 'Auto-release: ' + MONTH_NAMES[(month + 1) % 12] + ' 15, ' + (year + (month === 11 ? 1 : 0));
+                : 'Auto-release: ' + MONTH_NAMES[month] + ' 15, ' + year;
             status.append(reservation);
         }
         if (group.spent > group.budget) {
@@ -551,7 +551,7 @@ function renderHousehold(groups) {
 function renderMonthly() {
     clearTimeout(groceryReleaseTimer);
     groceryReleaseTimer = null;
-    const untilRelease = new Date(currentYear, currentMonth + 1, 15).getTime() - Date.now();
+    const untilRelease = new Date(currentYear, currentMonth, 15).getTime() - Date.now();
     if (currentUser && untilRelease > 0) {
         // Refresh an open view at the cutoff; long waits are rechecked within timer limits.
         groceryReleaseTimer = setTimeout(() => renderMonthly(), Math.min(untilRelease, 2147483647));
